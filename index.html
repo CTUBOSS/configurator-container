@@ -43,6 +43,7 @@
   .hud button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; pointer-events: auto;
     border-color: rgba(255,255,255,.7); background: rgba(255,255,255,.55); color: #1d2329;
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  button.icon { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; }
   .hud button.on { border-color: rgba(31,111,235,.8); background: rgba(31,111,235,.75); color: #fff; }
 </style>
 <script type="importmap">
@@ -387,7 +388,14 @@ function frameCamera() {
 }
 
 // --- environment: monochrome hidden-line scenery kept clear of the assembly ---
-const ENVS = { neutral: 'Neutru', meadow: 'Pajiște', mountain: 'Munte', site: 'Șantier', solar: 'Parc solar' };
+const ENVS = { neutral: 'Neutru', nature: 'Natură', site: 'Șantier', solar: 'Parc solar' };
+const SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const ENV_ICONS = {
+  neutral: SVG + '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 20L20 4"/></svg>',
+  nature: SVG + '<path d="M2 20l6-10 4 6 3-4 7 8z"/><circle cx="17" cy="6" r="2"/></svg>',
+  site: SVG + '<path d="M6 21V3"/><path d="M3 21h6"/><path d="M6 4h14"/><path d="M6 8l4-4"/><path d="M17 4v5"/><path d="M15 9h4v3h-4z"/></svg>',
+  solar: SVG + '<path d="M4 19l3-8h13l-3 8z"/><path d="M11.5 11l-3 8M16 11l-3 8M5.5 15h13"/><circle cx="6" cy="5" r="2"/></svg>',
+};
 const NEUTRAL = { sky: 0xdfe5ea, ground: 0xc9d1d6 };
 const MONO = { sky: 0xf5f6f7, ground: 0xeef0f2, fill: 0xf8f9fa, line: 0x5f666d, grid: 0xd5d9dd };
 let envGroup = new THREE.Group();
@@ -442,14 +450,13 @@ function buildEnv() {
     add(g, x, z, h / 2);
   };
 
-  if (state.env === 'meadow') {
-    for (let i = 0; i < 30; i++) tree(...spot(clear, clear + 30), 0.8 + rand() * 0.8);
-  } else if (state.env === 'mountain') {
+  if (state.env === 'nature') {
     for (let i = 0; i < 7; i++) {
       const [x, z] = spot(75, 95), h = 25 + rand() * 25;
       mountain(x, z, h * (0.8 + rand() * 0.4), h, rand() * 6);
     }
-    for (let i = 0; i < 30; i++) pine(...spot(clear, clear + 30), 0.8 + rand() * 0.7);
+    for (let i = 0; i < 20; i++) tree(...spot(clear, clear + 30), 0.8 + rand() * 0.8);
+    for (let i = 0; i < 20; i++) pine(...spot(clear, clear + 30), 0.8 + rand() * 0.7);
   } else if (state.env === 'site') {
     const zr = -(clear + 6);
     add(new THREE.BoxGeometry(160, 0.02, 7), 0, zr, 0.01); // road
@@ -485,12 +492,13 @@ function buildEnv() {
 const $ = id => document.getElementById(id);
 const eur = n => Math.round(n).toLocaleString('ro-RO') + ' €';
 
-// `palette` (name -> hex) renders the options as color swatches instead of text buttons.
-function choice(id, entries, current, key, palette) {
+// `palette` (name -> hex) renders color swatches, `icons` (value -> svg) icon buttons; label then becomes the tooltip.
+function choice(id, entries, current, key, palette, icons) {
   $(id).replaceChildren(...entries.map(([value, label]) => {
     const b = document.createElement('button');
     b.className = (value === current ? 'on ' : '') + (palette ? 'swatch' : '');
     if (palette) { b.style.background = '#' + palette[value].toString(16).padStart(6, '0'); b.title = b.ariaLabel = label; }
+    else if (icons) { b.innerHTML = icons[value]; b.classList.add('icon'); b.title = b.ariaLabel = label; }
     else b.textContent = label;
     b.onclick = () => set({ [key]: value });
     return b;
@@ -517,7 +525,7 @@ function render() {
   choice('lengths', LENGTHS.map(v => [v, `${v / 1000} m`]), state.length, 'length');
   choice('widths', WIDTHS.map(v => [v, `${v} mm`]), state.width, 'width');
   choice('heights', Object.entries(HEIGHTS).map(([k, v]) => [+k, v]), state.height, 'height');
-  choice('envs', Object.entries(ENVS), state.env, 'env');
+  choice('envs', Object.entries(ENVS), state.env, 'env', null, ENV_ICONS);
   choice('modules', MODULES.map(v => [v, `${v}`]), state.modules, 'modules');
   choice('couple', Object.entries(COUPLE), state.couple, 'couple');
   choice('colors', Object.keys(COLORS).map(k => [k, k]), state.color, 'color', COLORS);
