@@ -162,6 +162,8 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f94, 1.2));
 const sun = new THREE.DirectionalLight(0xffffff, 2);
 sun.position.set(8, 14, 10);
 sun.castShadow = true;
+sun.shadow.bias = -0.0005; // prevents shadow acne (flickering stripes) on shadowed interior surfaces
+sun.shadow.normalBias = 0.02;
 sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 });
 scene.add(sun);
@@ -211,6 +213,7 @@ function build() {
     inner: new THREE.MeshStandardMaterial({ color: 0xd9d4cc, roughness: 0.7, ...INSIDE }),
     innerDark: new THREE.MeshStandardMaterial({ color: 0x3a3d40, roughness: 0.6, ...INSIDE }),
     ceilLight: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8, ...INSIDE }),
+    innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.6, roughness: 0.1, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -247,7 +250,7 @@ function build() {
   // Interior enclosure of the whole assembly (inner faces only), seen through the doorway.
   const [L, W] = footprint(), rh = h - 2 * POST - 0.05;
   const room = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, rh, W - 0.2), [m.wall, m.wall, m.ceiling, m.floor, m.wall, m.wall]);
-  room.position.y = POST + rh / 2;
+  room.position.y = POST + rh / 2 + 0.005; // floor 5 mm above the bottom rails so they don't z-fight
   group.add(room);
 
   // Openings go on the assembly's exterior walls; an end door goes on the last module's +x end.
@@ -344,7 +347,14 @@ function windowAt(g, x, m) {
   box(win.w + 0.1, win.h + 0.1, 0.04, m.trim, x, y, 0, g);
   box(win.w, win.h, 0.06, m.glass, x, y, 0, g);
   const bars = Math.max(1, Math.round(win.w / 0.7) - 1);
-  for (let i = 1; i <= bars; i++) box(0.04, win.h, 0.07, m.trim, x - win.w / 2 + i * win.w / (bars + 1), y, 0, g);
+  // Inner face of the window on the interior wall (local z -0.09), lit like daylight.
+  box(win.w + 0.1, win.h + 0.1, 0.01, m.inner, x, y, -0.096, g);
+  box(win.w, win.h, 0.012, m.innerGlass, x, y, -0.096, g);
+  for (let i = 1; i <= bars; i++) {
+    const bx = x - win.w / 2 + i * win.w / (bars + 1);
+    box(0.04, win.h, 0.07, m.trim, bx, y, 0, g);
+    box(0.04, win.h, 0.014, m.inner, bx, y, -0.096, g);
+  }
 }
 
 // Assembly footprint [length, width] in meters.
