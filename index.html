@@ -62,6 +62,8 @@
   <div class="opts" id="winTypes"></div>
   <h2>Poziție ușă</h2>
   <div class="opts" id="doorPos"></div>
+  <h2>Iluminat exterior</h2>
+  <div class="opts" id="lamp"></div>
   <h2>Culoare panouri</h2>
   <div class="opts" id="colors"></div>
   <h2>Culoare cadru</h2>
@@ -97,6 +99,7 @@ const DOORS = {
 const DOOR_POS = { side: 'Lateral', end: 'Capăt' };
 const DOOR = { w: 0.9, h: 2.0 };
 const CANOPY = { w: DOOR.w + 0.2, d: 0.4 }; // door canopy: 20 cm wider than the door, 40 cm deep
+const LAMP = { label: 'Lampă LED exterior', price: 85 };
 // Scene units are meters; sill is measured from the floor.
 const WINDOWS = {
   std: { label: 'Standard 900×1100', w: 0.9, h: 1.1, sill: 0.9, price: 380 },
@@ -110,7 +113,7 @@ const RIB = { pitch: 0.25, base: 0.03, top: 0.01, d: 0.005 }; // Izoval-type wal
 const MODULES = [1, 2, 3, 4, 5, 6];
 const COUPLE = { width: 'Pe lățime', length: 'Pe lungime' };
 const state = { frame: 'RAL 9005 negru', modules: 1, couple: 'width', env: 'neutral',
-  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', winType: 'std', windows: 3 };
+  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', lamp: false, winType: 'std', windows: 3 };
 const dims = () => ({ l: state.length / 1000, w: state.width / 1000, h: state.height / 1000 });
 
 // Center [x, z] of module i in the coupled assembly (identical modules, centered on the origin).
@@ -190,6 +193,7 @@ function build() {
     frame: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5, metalness: 0.1 }),
     trim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4 }),
     glass: new THREE.MeshStandardMaterial({ color: 0x5f7f99, roughness: 0.08, metalness: 0.6 }),
+    lamp: new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe2b0, emissiveIntensity: 1.5 }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -278,6 +282,15 @@ function doorAt(g, x, m) {
   const cy = POST + DOOR.h + 0.15, tilt = 0.08;
   box(CANOPY.w, 0.04, CANOPY.d, m.frame, x, cy, CANOPY.d / 2, g).rotation.x = tilt;
   box(CANOPY.w, 0.08, 0.02, m.frame, x, cy - CANOPY.d / 2 * Math.sin(tilt) - 0.02, CANOPY.d, g);
+  // Optional LED bulkhead lamp on the wall between the door frame and the canopy.
+  if (state.lamp) {
+    const ly = POST + DOOR.h + 0.09;
+    box(0.24, 0.06, 0.05, m.frame, x, ly, 0.03, g);
+    box(0.2, 0.04, 0.01, m.lamp, x, ly, 0.06, g);
+    const light = new THREE.PointLight(0xffe2b0, 3, 4);
+    light.position.set(x, ly - 0.05, 0.15);
+    g.add(light);
+  }
 }
 
 function windowAt(g, x, m) {
@@ -439,12 +452,14 @@ function render() {
   choice('colors', Object.keys(COLORS).map(k => [k, k]), state.color, 'color', COLORS);
   choice('frames', Object.keys(FRAMES).map(k => [k, k]), state.frame, 'frame', FRAMES);
   choice('doorPos', Object.entries(DOOR_POS), state.doorPos, 'doorPos');
+  choice('lamp', [[false, 'Fără'], [true, 'Lampă deasupra ușii']], state.lamp, 'lamp');
   choice('winTypes', Object.entries(WINDOWS).map(([k, v]) => [k, v.label]), state.winType, 'winType');
   $('count').textContent = state.windows;
   const lines = [
     [`${n > 1 ? n + ' × ' : ''}Container ${(l * w).toFixed(1)} m² × ${PRICE.perM2} €`, n * l * w * PRICE.perM2],
     ...(state.height === 2896 ? [[`High cube${n > 1 ? ' × ' + n : ''}`, n * PRICE.highCube]] : []),
     [DOORS[state.door].label, DOORS[state.door].price],
+    ...(state.lamp ? [[LAMP.label, LAMP.price]] : []),
     [`${win.label} × ${state.windows}`, win.price * state.windows],
   ];
   const total = Math.round(lines.reduce((sum, [, p]) => sum + p, 0)), vat = Math.round(total * VAT);
