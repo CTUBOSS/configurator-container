@@ -414,7 +414,7 @@ function buildEnv() {
     envGroup.add(o);
     return o;
   };
-  const grid = new THREE.GridHelper(400, 160, MONO.grid, MONO.grid);
+  const grid = new THREE.GridHelper(400, 320, MONO.grid, MONO.grid);
   grid.position.y = 0.005;
   envGroup.add(grid);
 
@@ -424,19 +424,19 @@ function buildEnv() {
     return [r * Math.sin(a), r * Math.cos(a)];
   };
   const tree = (x, z, s) => {
-    add(new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 1.4 * s, 8), x, z, 0.7 * s);
-    add(new THREE.IcosahedronGeometry(1.1 * s, 1), x, z, 1.9 * s);
+    add(new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 1.4 * s, 12), x, z, 0.7 * s);
+    add(new THREE.IcosahedronGeometry(1.1 * s, 2), x, z, 1.9 * s);
   };
   const pine = (x, z, s) => {
-    add(new THREE.CylinderGeometry(0.1 * s, 0.15 * s, 0.8 * s, 8), x, z, 0.4 * s);
-    for (let k = 0; k < 3; k++) add(new THREE.ConeGeometry((1.1 - k * 0.25) * s, 1.6 * s, 10), x, z, (1.4 + k * 0.8) * s);
+    add(new THREE.CylinderGeometry(0.1 * s, 0.15 * s, 0.8 * s, 12), x, z, 0.4 * s);
+    for (let k = 0; k < 3; k++) add(new THREE.ConeGeometry((1.1 - k * 0.25) * s, 1.6 * s, 16, 3), x, z, (1.4 + k * 0.8) * s);
   };
   // Ridged cone: radius wobbles with angle and height; integer angle multiples keep the UV seam closed.
   const mountain = (x, z, r, h, ph) => {
-    const g = new THREE.ConeGeometry(r, h, 24, 8), p = g.attributes.position;
+    const g = new THREE.ConeGeometry(r, h, 48, 16), p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const t = (p.getY(i) + h / 2) / h, a = Math.atan2(p.getZ(i), p.getX(i));
-      const k = 1 + 0.12 * Math.sin(5 * a + ph + t * 4) + 0.06 * Math.sin(11 * a + t * 9);
+      const k = 1 + 0.12 * Math.sin(5 * a + ph + t * 4) + 0.06 * Math.sin(11 * a + t * 9) + 0.03 * Math.sin(23 * a + t * 17);
       p.setXYZ(i, p.getX(i) * k, p.getY(i), p.getZ(i) * k);
     }
     add(g, x, z, h / 2);
@@ -454,21 +454,21 @@ function buildEnv() {
     const zr = -(clear + 6);
     add(new THREE.BoxGeometry(160, 0.02, 7), 0, zr, 0.01); // road
     for (let x = -78; x < 80; x += 6) add(new THREE.BoxGeometry(3, 0.025, 0.15), x, zr, 0.015);
-    for (let x = -30; x <= 30; x += 4) add(new THREE.ConeGeometry(0.2, 0.7, 12), x, zr + 4, 0.35);
-    for (const x of [-22, 6, 30]) add(new THREE.ConeGeometry(2.5, 1.6, 16, 3), x, zr - 7, 0.8, true); // gravel piles
+    for (let x = -30; x <= 30; x += 4) add(new THREE.ConeGeometry(0.2, 0.7, 20), x, zr + 4, 0.35);
+    for (const x of [-22, 6, 30]) add(new THREE.ConeGeometry(2.5, 1.6, 32, 6), x, zr - 7, 0.8, true); // gravel piles
     for (const [x, floors] of [[-25, 8], [0, 10], [25, 6]]) {
       const z = zr - 24, h = floors * 3;
       add(new THREE.BoxGeometry(14, h, 12), x, z, h / 2);
       for (let f = 1; f < floors; f++) add(new THREE.BoxGeometry(14.1, 0.25, 12.1), x, z, f * 3);
-      for (let c = -2; c <= 2; c++) add(new THREE.BoxGeometry(0.2, h, 0.05), x + c * 2.8, z + 6.03, h / 2); // facade piers
+      for (let c = -4; c <= 4; c++) add(new THREE.BoxGeometry(0.2, h, 0.05), x + c * 1.4, z + 6.03, h / 2); // facade piers
     }
-    add(new THREE.BoxGeometry(1, 32, 1, 1, 16, 1), 12, zr - 13, 16, true); // tower crane
-    add(new THREE.BoxGeometry(26, 0.8, 0.8, 26, 1, 1), 6, zr - 13, 32, true);
+    add(new THREE.BoxGeometry(1, 32, 1, 2, 32, 2), 12, zr - 13, 16, true); // tower crane
+    add(new THREE.BoxGeometry(26, 0.8, 0.8, 52, 2, 2), 6, zr - 13, 32, true);
   } else if (state.env === 'solar') {
-    // Shared cell grid drawn on top of every panel (6 x 3 cells).
+    // Shared cell grid drawn on top of every panel (12 x 6 cells).
     const pts = [];
-    for (let i = 0; i <= 6; i++) pts.push(new THREE.Vector3(-2.1 + i * 0.7, 0.031, -1.1), new THREE.Vector3(-2.1 + i * 0.7, 0.031, 1.1));
-    for (let j = 0; j <= 3; j++) pts.push(new THREE.Vector3(-2.1, 0.031, -1.1 + j * 2.2 / 3), new THREE.Vector3(2.1, 0.031, -1.1 + j * 2.2 / 3));
+    for (let i = 0; i <= 12; i++) pts.push(new THREE.Vector3(-2.1 + i * 0.35, 0.031, -1.1), new THREE.Vector3(-2.1 + i * 0.35, 0.031, 1.1));
+    for (let j = 0; j <= 6; j++) pts.push(new THREE.Vector3(-2.1, 0.031, -1.1 + j * 2.2 / 6), new THREE.Vector3(2.1, 0.031, -1.1 + j * 2.2 / 6));
     const cells = new THREE.BufferGeometry().setFromPoints(pts);
     for (let row = 0; row < 4; row++) for (let x = -32; x <= 32; x += 4.4) {
       const z = -(clear + 3 + row * 6);
