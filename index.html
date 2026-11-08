@@ -38,7 +38,9 @@
   .total td { padding-top: 10px; border-top: 1px solid #cfd6dc; font-size: 16px; font-weight: 600; }
   /* Semi-transparent quick controls over the 3D view. */
   #view { position: relative; }
-  .hud { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 24px; z-index: 1; display: flex; gap: 8px; }
+  .hud { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); right: 12px; bottom: 24px; z-index: 1;
+    display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+  .hud button { pointer-events: auto; }
   .hud button { border-color: rgba(255,255,255,.7); background: rgba(255,255,255,.55); color: #1d2329;
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
   .hud button.on { border-color: rgba(31,111,235,.8); background: rgba(31,111,235,.75); color: #fff; }
@@ -51,7 +53,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div class="hud"><button id="hudDoor">Deschide ușa</button><button id="hudLight">Aprinde lumina</button></div></div>
+<div id="view"><div class="hud"><button id="hudDoor">Deschide ușa</button><button id="hudIn">Lumină interior</button><button id="hudOut">Lumină exterior</button></div></div>
 <aside>
   <h1>Configurator container DUALMAN</h1>
   <p class="dims" id="dims"></p>
@@ -180,7 +182,7 @@ scene.add(ground);
 
 let group = new THREE.Group();
 // Door leaves (hinge pivots) from the last build; the animation loop swings them toward doorOpen.
-let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false;
+let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsIn = false, lightsOut = false;
 function box(w, h, d, mat, x, y, z, parent = group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -208,7 +210,7 @@ function build() {
     frame: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5, metalness: 0.1 }),
     trim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4 }),
     glass: new THREE.MeshStandardMaterial({ color: 0x5f7f99, roughness: 0.08, metalness: 0.6 }),
-    lamp: new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe2b0, emissiveIntensity: lightsOn ? 1.5 : 0 }),
+    lamp: new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe2b0, emissiveIntensity: lightsOut ? 1.5 : 0 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.5 }),
     void: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 1 }),
     doorTrim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4, ...OUTSIDE }),
@@ -218,7 +220,7 @@ function build() {
     ceiling: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
     inner: new THREE.MeshStandardMaterial({ color: 0xd9d4cc, roughness: 0.7, ...INSIDE }),
     innerDark: new THREE.MeshStandardMaterial({ color: 0x3a3d40, roughness: 0.6, ...INSIDE }),
-    ceilLight: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: lightsOn ? 1.2 : 0.05, ...INSIDE }),
+    ceilLight: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: lightsIn ? 1.2 : 0.05, ...INSIDE }),
     innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.6, roughness: 0.1, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
@@ -319,7 +321,7 @@ function doorAt(g, x, m) {
   box(1.4, 0.03, 0.7, m.inner, x, POST + 0.74, deskZ, g);
   for (const dx of [-0.65, 0.65]) box(0.05, 0.72, 0.6, m.innerDark, x + dx, POST + 0.37, deskZ, g);
   box(0.6, 0.02, 0.6, m.ceilLight, x, dims().h - POST - 0.06, deskZ + 0.3, g);
-  if (lightsOn) {
+  if (lightsIn) {
     const ceiling = new THREE.PointLight(0xfff4e0, 4, 7);
     ceiling.position.set(x, dims().h - POST - 0.3, deskZ + 0.3);
     g.add(ceiling);
@@ -347,7 +349,7 @@ function doorAt(g, x, m) {
     const ly = POST + DOOR.h + 0.09;
     box(0.24, 0.06, 0.05, m.frame, x, ly, 0.03, g);
     box(0.2, 0.04, 0.01, m.lamp, x, ly, 0.06, g);
-    if (lightsOn) {
+    if (lightsOut) {
       const light = new THREE.PointLight(0xffe2b0, 3, 4);
       light.position.set(x, ly - 0.05, 0.15);
       g.add(light);
@@ -524,6 +526,7 @@ function render() {
   choice('lamp', [[false, 'Fără'], [true, 'Lampă deasupra ușii']], state.lamp, 'lamp');
   choice('winTypes', Object.entries(WINDOWS).map(([k, v]) => [k, v.label]), state.winType, 'winType');
   $('count').textContent = state.windows;
+  $('hudOut').className = state.lamp && lightsOut ? 'on' : '';
   const lines = [
     [`${n > 1 ? n + ' × ' : ''}Container ${(l * w).toFixed(1)} m² × ${PRICE.perM2} €`, n * l * w * PRICE.perM2],
     ...(state.height === 2896 ? [[`High cube${n > 1 ? ' × ' + n : ''}`, n * PRICE.highCube]] : []),
@@ -558,14 +561,16 @@ function toggleDoor() {
   }
 }
 $('doorToggle').onclick = $('hudDoor').onclick = toggleDoor;
-// Light switch: interior ceiling light and, when fitted, the exterior lamp.
-function toggleLights() {
-  lightsOn = !lightsOn;
-  $('hudLight').textContent = lightsOn ? 'Stinge lumina' : 'Aprinde lumina';
-  $('hudLight').className = lightsOn ? 'on' : '';
+// Light switches: interior ceiling light, and the exterior lamp (fitted on first switch-on).
+function toggleLight(outside) {
+  if (outside) lightsOut = !lightsOut; else lightsIn = !lightsIn;
+  $('hudIn').className = lightsIn ? 'on' : '';
+  if (outside && lightsOut && !state.lamp) return set({ lamp: true });
   build();
+  render();
 }
-$('hudLight').onclick = toggleLights;
+$('hudIn').onclick = () => toggleLight(false);
+$('hudOut').onclick = () => toggleLight(true);
 // A tap/click on the door leaf toggles it; drags (orbiting the camera) are ignored.
 const ray = new THREE.Raycaster(), down = new THREE.Vector2();
 renderer.domElement.addEventListener('pointerdown', e => down.set(e.clientX, e.clientY));
