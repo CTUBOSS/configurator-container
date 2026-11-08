@@ -108,6 +108,9 @@ const WINDOWS = {
   glazed: { label: 'Suprafață vitrată 2000×2000', w: 2.0, h: 2.0, sill: 0.1, price: 1450 },
 };
 const POST = 0.15; // corner post / rail thickness
+// Stencil: the doorway mask marks its pixels 1; the facade skips them and the interior draws only there.
+const OUTSIDE = { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc };
+const INSIDE = { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc };
 const GAP = 0.3;   // min clearance between openings and from posts
 const CASTING = { x: 0.178, y: 0.118, z: 0.162 }; // ISO 1161 corner casting
 const RIB = { pitch: 0.25, base: 0.03, top: 0.01, d: 0.005 }; // Izoval-type wall rib: half-widths at panel / crest, depth
@@ -145,7 +148,7 @@ function openingWalls() {
 
 // --- scene ---
 const view = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 view.appendChild(renderer.domElement);
@@ -188,11 +191,11 @@ function layout(widths, inner) {
 function build() {
   scene.remove(group);
   doorLeaves = [];
-  group.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  group.traverse(o => { if (o.isMesh) { o.geometry.dispose(); [].concat(o.material).forEach(mat => mat.dispose()); } });
   group = new THREE.Group();
   const { l, w, h } = dims();
   const m = {
-    panel: new THREE.MeshStandardMaterial({ color: COLORS[state.color], roughness: 0.6, metalness: 0.2 }),
+    panel: new THREE.MeshStandardMaterial({ color: COLORS[state.color], roughness: 0.6, metalness: 0.2, ...OUTSIDE }),
     // Low metalness: without an env map, metal renders far darker than its RAL swatch.
     frame: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5, metalness: 0.1 }),
     trim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4 }),
@@ -200,6 +203,14 @@ function build() {
     lamp: new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe2b0, emissiveIntensity: 1.5 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.5 }),
     void: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 1 }),
+    doorTrim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4, ...OUTSIDE }),
+    mask: new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp }),
+    wall: new THREE.MeshStandardMaterial({ color: 0xf2f0eb, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
+    floor: new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.8, side: THREE.BackSide, ...INSIDE }),
+    ceiling: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
+    inner: new THREE.MeshStandardMaterial({ color: 0xd9d4cc, roughness: 0.7, ...INSIDE }),
+    innerDark: new THREE.MeshStandardMaterial({ color: 0x3a3d40, roughness: 0.6, ...INSIDE }),
+    ceilLight: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -232,6 +243,12 @@ function build() {
     s.position.set(x, 0, z);
     group.add(s);
   }
+
+  // Interior enclosure of the whole assembly (inner faces only), seen through the doorway.
+  const [L, W] = footprint(), rh = h - 2 * POST - 0.05;
+  const room = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, rh, W - 0.2), [m.wall, m.wall, m.ceiling, m.floor, m.wall, m.wall]);
+  room.position.y = POST + rh / 2;
+  group.add(room);
 
   // Openings go on the assembly's exterior walls; an end door goes on the last module's +x end.
   for (const s of openingWalls()) {
@@ -281,8 +298,18 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
 
 function doorAt(g, x, m) {
   const y = POST + DOOR.h / 2;
-  box(DOOR.w + 0.1, DOOR.h + 0.05, 0.04, m.trim, x, y + 0.025, 0, g);
-  box(DOOR.w, DOOR.h, 0.002, m.void, x, y, 0.022, g); // dark doorway, seen when the leaf swings open
+  box(DOOR.w + 0.1, DOOR.h + 0.05, 0.04, m.doorTrim, x, y + 0.025, 0, g);
+  const mask = new THREE.Mesh(new THREE.PlaneGeometry(DOOR.w, DOOR.h), m.mask);
+  mask.position.set(x, y, 0.021);
+  mask.renderOrder = -1; // must write the stencil before the facade draws
+  g.add(mask);
+  // Reveal through the wall thickness, then a desk and ceiling light at the far wall (local -z is inward).
+  for (const sx of [-1, 1]) box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g);
+  box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g);
+  const [L, W] = footprint(), deskZ = -((state.doorPos === 'side' ? W : L) - 0.11) + 0.4;
+  box(1.4, 0.03, 0.7, m.inner, x, POST + 0.74, deskZ, g);
+  for (const dx of [-0.65, 0.65]) box(0.05, 0.72, 0.6, m.innerDark, x + dx, POST + 0.37, deskZ, g);
+  box(0.6, 0.02, 0.6, m.ceilLight, x, dims().h - POST - 0.06, deskZ + 0.3, g);
   // Leaf hinges on its front-left edge and swings outward.
   const leaf = new THREE.Group();
   leaf.position.set(x - DOOR.w / 2, y, 0.025);
