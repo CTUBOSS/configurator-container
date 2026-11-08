@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#dfe5ea">
+<title>Configurator container</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden;
+    font-family: -apple-system, system-ui, sans-serif; color: #1d2329; background: #fff; -webkit-text-size-adjust: 100%; }
+  /* 3D view stays on top; options scroll underneath like a bottom sheet. */
+  #view { flex: none; height: 46vh; height: 46dvh; background: #dfe5ea; touch-action: none; }
+  canvas { display: block; }
+  aside { position: relative; flex: 1; min-height: 0; margin-top: -12px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain; border-radius: 16px 16px 0 0; background: #fff; box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+    padding: 14px max(16px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  h1 { margin: 0 0 4px; font-size: 18px; }
+  .dims { margin: 0; font-size: 13px; color: #6b7680; }
+  h2 { margin: 18px 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #6b7680; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* 44px tap targets (Apple HIG); manipulation disables double-tap zoom on controls only. */
+  button { min-height: 44px; padding: 10px 12px; border: 1px solid #cfd6dc; border-radius: 10px; background: #fff; color: inherit;
+    font: inherit; font-size: 15px; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  button.on { border-color: #1f6feb; background: #e8f0fe; }
+  button.swatch { width: 44px; height: 44px; padding: 0; }
+  button.swatch.on { outline: 2px solid #1f6feb; outline-offset: 2px; }
+  .stepper { display: flex; align-items: center; gap: 16px; font-size: 17px; }
+  .stepper button { width: 44px; }
+  input[type=range] { width: 100%; height: 44px; margin: 0; touch-action: manipulation; }
+  .note { min-height: 1em; margin: 6px 0 0; font-size: 13px; color: #a15c00; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 6px 0; }
+  td:last-child { text-align: right; white-space: nowrap; }
+  .total td { padding-top: 10px; border-top: 1px solid #cfd6dc; font-size: 16px; font-weight: 600; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="view"></div>
+<aside>
+  <h1>Container configurator</h1>
+  <p class="dims" id="dims"></p>
+  <h2>Lungime</h2>
+  <div class="opts" id="lengths"></div>
+  <h2>Lățime</h2>
+  <div class="opts" id="widths"></div>
+  <h2>Înălțime</h2>
+  <div class="opts" id="heights"></div>
+  <h2>Număr ferestre</h2>
+  <div class="stepper"><button id="less" aria-label="Mai puține ferestre">−</button><span id="count"></span><button id="more" aria-label="Mai multe ferestre">+</button></div>
+  <p class="note" id="note"></p>
+  <h2>Tip fereastră</h2>
+  <div class="opts" id="winTypes"></div>
+  <h2>Poziție ușă</h2>
+  <div class="opts" id="doorPos"></div>
+  <h2>Culoare panouri</h2>
+  <div class="opts" id="colors"></div>
+  <h2>Culoare cadru</h2>
+  <div class="opts" id="frames"></div>
+  <h2>Cuplare module</h2>
+  <div class="opts" id="modules"></div>
+  <div class="opts" id="couple" style="margin-top: 8px"></div>
+  <h2>Preț estimativ</h2>
+  <table id="price"></table>
+  <h2>Mediu</h2>
+  <div class="opts" id="envs"></div>
+  <h2>Direcție soare <span id="sunDeg"></span></h2>
+  <input type="range" id="sun" min="0" max="359" value="39" aria-label="Direcție soare">
+</aside>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Exterior dimensions in mm; prices are placeholder EUR values.
+const LENGTHS = [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000];
+const WIDTHS = [2438, 3000];
+const HEIGHTS = { 2591: 'Standard 2591', 2896: 'High cube 2896' };
+const PRICE = { perM2: 480, highCube: 450 };
+const VAT = 0.21; // Romania standard VAT rate since 2025-08-01
+const COLORS = { 'RAL 9010 alb': 0xf1ede1, 'RAL 9016 alb trafic': 0xf6f6f2, 'RAL 7035 gri deschis': 0xc5c7c4 };
+const FRAMES = {
+  'RAL 9005 negru': 0x232528, 'RAL 7016 gri antracit': 0x383e42, 'RAL 7024 gri grafit': 0x474a50,
+  'RAL 7037 gri praf': 0x7a7b7a, 'RAL 9006 aluminiu': 0xa1a1a0, 'RAL 7035 gri deschis': 0xc5c7c4, 'RAL 9010 alb': 0xf1ede1,
+};
+const DOORS = {
+  metal: { label: 'Ușă metalică', price: 650 },
+};
+const DOOR_POS = { side: 'Lateral', end: 'Capăt' };
+const DOOR = { w: 0.9, h: 2.0 };
+const CANOPY = { w: DOOR.w + 0.2, d: 0.4 }; // door canopy: 20 cm wider than the door, 40 cm deep
+// Scene units are meters; sill is measured from the floor.
+const WINDOWS = {
+  std: { label: 'Standard 900×1100', w: 0.9, h: 1.1, sill: 0.9, price: 380 },
+  tall: { label: 'Înaltă 900×2000', w: 0.9, h: 2.0, sill: 0.1, price: 620 },
+  glazed: { label: 'Suprafață vitrată 2000×2000', w: 2.0, h: 2.0, sill: 0.1, price: 1450 },
+};
+const POST = 0.15; // corner post / rail thickness
+const GAP = 0.3;   // min clearance between openings and from posts
+const CASTING = { x: 0.178, y: 0.118, z: 0.162 }; // ISO 1161 corner casting
+const RIB = { pitch: 0.25, base: 0.03, top: 0.01, d: 0.005 }; // Izoval-type wall rib: half-widths at panel / crest, depth
+const MODULES = [1, 2, 3, 4, 5, 6];
+const COUPLE = { width: 'Pe lățime', length: 'Pe lungime' };
+const state = { frame: 'RAL 9005 negru', modules: 1, couple: 'width', env: 'neutral',
+  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', winType: 'std', windows: 3 };
+const dims = () => ({ l: state.length / 1000, w: state.width / 1000, h: state.height / 1000 });
+
+// Center [x, z] of module i in the coupled assembly (identical modules, centered on the origin).
+function moduleAt(i) {
+  const { l, w } = dims(), d = i - (state.modules - 1) / 2;
+  return state.couple === 'length' ? [d * l, 0] : [0, d * w];
+}
+
+// Exterior long walls that can take openings (walls shared by coupled modules are skipped).
+// Front walls fill first, round-robin across modules, then the back walls; a side door sits on the last front wall.
+function openingWalls() {
+  const { l, w } = dims(), n = state.modules, z = w / 2 - 0.01;
+  const idx = state.couple === 'length' ? [...Array(n).keys()] : null;
+  const fronts = idx ? idx.map(i => [moduleAt(i)[0], z]) : [[0, moduleAt(n - 1)[1] + z]];
+  const backs = idx ? idx.map(i => [moduleAt(i)[0], -z]) : [[0, moduleAt(0)[1] - z]];
+  const inner = l - 2 * POST, win = WINDOWS[state.winType];
+  const fit = (used, count) => Math.max(0, Math.floor((inner - used - (count + 1) * GAP) / (win.w + GAP)));
+  const sides = [fronts, backs].map((list, back) => list.map(([x, wz], i) => {
+    const door = !back && state.doorPos === 'side' && i === list.length - 1;
+    return { x, z: wz, rot: back ? Math.PI : 0, door, cap: door ? fit(DOOR.w, 1) : fit(0, 0), n: 0 };
+  }));
+  let left = state.windows;
+  for (const list of sides) {
+    while (left > 0 && list.some(s => s.n < s.cap)) for (const s of list) if (left > 0 && s.n < s.cap) { s.n++; left--; }
+  }
+  return sides.flat();
+}
+
+// --- scene ---
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdfe5ea);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f94, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(8, 14, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 });
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0xc9d1d6 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+let group = new THREE.Group();
+function box(w, h, d, mat, x, y, z, parent = group) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// Evenly spaces openings of the given widths along a wall of length `inner`; returns center x values.
+function layout(widths, inner) {
+  const gap = (inner - widths.reduce((s, w) => s + w, 0)) / (widths.length + 1);
+  let x = -inner / 2 + gap;
+  return widths.map(w => { const cx = x + w / 2; x += w + gap; return cx; });
+}
+
+function build() {
+  scene.remove(group);
+  group.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  group = new THREE.Group();
+  const { l, w, h } = dims();
+  const m = {
+    panel: new THREE.MeshStandardMaterial({ color: COLORS[state.color], roughness: 0.6, metalness: 0.2 }),
+    // Low metalness: without an env map, metal renders far darker than its RAL swatch.
+    frame: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5, metalness: 0.1 }),
+    trim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x5f7f99, roughness: 0.08, metalness: 0.6 }),
+    casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
+    // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
+    hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
+  };
+
+  box(l - 0.04, h - POST - 0.02, w - 0.04, m.panel, 0, (h + POST - 0.02) / 2, 0);
+
+  // Each wall is a local frame: x runs along the wall, +z points outward.
+  const wall = (x, z, rot) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; group.add(g); return g; };
+  const ribGeo = ribGeometry(h - 2 * POST);
+  for (const [x, z, rot, len] of [[0, w / 2 - 0.02, 0, l], [0, 0.02 - w / 2, Math.PI, l], [l / 2 - 0.02, 0, Math.PI / 2, w], [0.02 - l / 2, 0, -Math.PI / 2, w]]) {
+    const face = wall(x, z, rot);
+    ribs(len - 2 * POST, t => { const r = new THREE.Mesh(ribGeo, m.panel); r.position.x = t; r.receiveShadow = true; face.add(r); });
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    box(POST, h, POST, m.frame, sx * (l - POST) / 2, h / 2, sz * (w - POST) / 2);
+    for (const top of [false, true]) cornerCasting(sx, sz, top, { l, w, h }, m);
+  }
+  for (const y of [POST / 2, h - POST / 2]) {
+    for (const sz of [-1, 1]) box(l, POST, POST, m.frame, 0, y, sz * (w - POST) / 2);
+    for (const sx of [-1, 1]) box(POST, POST, w, m.frame, sx * (l - POST) / 2, y, 0);
+  }
+
+  // The parts above form one module shell; place identical copies for coupled modules.
+  const shell = group;
+  group = new THREE.Group();
+  for (let i = 0; i < state.modules; i++) {
+    const s = i ? shell.clone() : shell;
+    const [x, z] = moduleAt(i);
+    s.position.set(x, 0, z);
+    group.add(s);
+  }
+
+  // Openings go on the assembly's exterior walls; an end door goes on the last module's +x end.
+  for (const s of openingWalls()) {
+    const g = wall(s.x, s.z, s.rot), widths = Array(s.n).fill(WINDOWS[state.winType].w);
+    const doorIndex = s.door ? Math.floor(s.n / 2) : -1;
+    if (s.door) widths.splice(doorIndex, 0, DOOR.w);
+    layout(widths, l - 2 * POST).forEach((x, i) => (i === doorIndex ? doorAt : windowAt)(g, x, m));
+  }
+  if (state.doorPos === 'end') {
+    const [x, z] = moduleAt(state.modules - 1);
+    doorAt(wall(x + l / 2 - 0.01, z, Math.PI / 2), 0, m);
+  }
+
+  scene.add(group);
+}
+
+// Calls place(t) for evenly spaced rib positions along a wall of length `len`, centered on 0.
+function ribs(len, place) {
+  const n = Math.round(len / RIB.pitch);
+  for (let i = 1; i < n; i++) place(-len / 2 + i * len / n);
+}
+
+// Trapezoid rib cross-section whose flanks blend smoothly into the flat panel, extruded up the wall.
+function ribGeometry(height) {
+  const { base: B, top: T, d: D } = RIB, k = (B - T) / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-B, 0);
+  s.bezierCurveTo(-B + k, 0, -T - k, D, -T, D);
+  s.lineTo(T, D);
+  s.bezierCurveTo(T + k, D, B - k, 0, B, 0);
+  s.lineTo(-B, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: height, bevelEnabled: false, curveSegments: 8 });
+  g.rotateX(Math.PI / 2); // profile +y -> outward (+z), extrusion -> down
+  g.translate(0, height + POST, 0);
+  return g;
+}
+
+// ISO corner casting with its oval twistlock / lifting apertures on the visible faces.
+function cornerCasting(sx, sz, top, { l, w, h }, m) {
+  const C = CASTING, e = 0.004; // castings stand slightly proud of the frame
+  const x = sx * (l / 2 - C.x / 2 + e), y = top ? h - C.y / 2 + e : C.y / 2, z = sz * (w / 2 - C.z / 2 + e);
+  box(C.x, C.y, C.z, m.casting, x, y, z);
+  box(0.078, 0.051, 0.004, m.hole, x, y, z + sz * C.z / 2);
+  box(0.004, 0.051, 0.064, m.hole, x + sx * C.x / 2, y, z);
+  if (top) box(0.124, 0.004, 0.063, m.hole, x, y + C.y / 2, z);
+}
+
+function doorAt(g, x, m) {
+  const y = POST + DOOR.h / 2;
+  box(DOOR.w + 0.1, DOOR.h + 0.05, 0.04, m.trim, x, y + 0.025, 0, g);
+  box(DOOR.w, DOOR.h, 0.05, m.frame, x, y, 0, g);
+  box(0.12, 0.03, 0.05, m.trim, x + DOOR.w / 2 - 0.12, y, 0.04, g);
+  // Fixed metal canopy over the door, sloped slightly outward, with a front lip.
+  const cy = POST + DOOR.h + 0.15, tilt = 0.08;
+  box(CANOPY.w, 0.04, CANOPY.d, m.frame, x, cy, CANOPY.d / 2, g).rotation.x = tilt;
+  box(CANOPY.w, 0.08, 0.02, m.frame, x, cy - CANOPY.d / 2 * Math.sin(tilt) - 0.02, CANOPY.d, g);
+}
+
+function windowAt(g, x, m) {
+  const win = WINDOWS[state.winType], y = POST + win.sill + win.h / 2;
+  box(win.w + 0.1, win.h + 0.1, 0.04, m.trim, x, y, 0, g);
+  box(win.w, win.h, 0.06, m.glass, x, y, 0, g);
+  const bars = Math.max(1, Math.round(win.w / 0.7) - 1);
+  for (let i = 1; i <= bars; i++) box(0.04, win.h, 0.07, m.trim, x - win.w / 2 + i * win.w / (bars + 1), y, 0, g);
+}
+
+// Assembly footprint [length, width] in meters.
+function footprint() {
+  const { l, w } = dims(), n = state.modules;
+  return state.couple === 'length' ? [l * n, w] : [l, w * n];
+}
+
+function frameCamera() {
+  const [L, W] = footprint(), d = Math.max(L, W, 5) * 1.3, s = Math.max(L, W) / 2 + 2;
+  camera.position.set(d * 0.55, d * 0.4, d * 0.9);
+  controls.target.set(0, dims().h / 2, 0);
+  Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s });
+  sun.shadow.camera.updateProjectionMatrix();
+}
+
+// --- environment: monochrome hidden-line scenery kept clear of the assembly ---
+const ENVS = { neutral: 'Neutru', meadow: 'Pajiște', mountain: 'Munte', site: 'Șantier', solar: 'Parc solar' };
+const NEUTRAL = { sky: 0xdfe5ea, ground: 0xc9d1d6 };
+const MONO = { sky: 0xf5f6f7, ground: 0xeef0f2, fill: 0xf8f9fa, line: 0x5f666d, grid: 0xd5d9dd };
+let envGroup = new THREE.Group();
+// Deterministic PRNG so scenery stays put between rebuilds.
+const seeded = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+
+function buildEnv() {
+  scene.remove(envGroup);
+  envGroup.traverse(o => { if (o.geometry) { o.geometry.dispose(); o.material.dispose(); } });
+  envGroup = new THREE.Group();
+  const mono = state.env !== 'neutral';
+  scene.background.set(mono ? MONO.sky : NEUTRAL.sky);
+  ground.material.color.set(mono ? MONO.ground : NEUTRAL.ground);
+  if (!mono) return scene.add(envGroup);
+
+  const [L, W] = footprint(), clear = Math.hypot(L, W) / 2 + 3, rand = seeded(7);
+  const fill = new THREE.MeshBasicMaterial({ color: MONO.fill, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const line = new THREE.LineBasicMaterial({ color: MONO.line });
+  // A flat fill hides lines behind it; the edges carry the drawing. `wire` shows every triangle (lattice look).
+  const add = (geo, x, z, y, wire = false) => {
+    const o = new THREE.Mesh(geo, fill);
+    o.add(new THREE.LineSegments(wire ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo, 1), line));
+    o.position.set(x, y, z);
+    envGroup.add(o);
+    return o;
+  };
+  const grid = new THREE.GridHelper(400, 160, MONO.grid, MONO.grid);
+  grid.position.y = 0.005;
+  envGroup.add(grid);
+
+  // Random [x, z] in a ring around the assembly, skipping the sector between it and the default camera.
+  const spot = (rMin, rMax) => {
+    const a = 1.45 + rand() * (2 * Math.PI - 1.8), r = rMin + rand() * (rMax - rMin);
+    return [r * Math.sin(a), r * Math.cos(a)];
+  };
+  const tree = (x, z, s) => {
+    add(new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 1.4 * s, 8), x, z, 0.7 * s);
+    add(new THREE.IcosahedronGeometry(1.1 * s, 1), x, z, 1.9 * s);
+  };
+  const pine = (x, z, s) => {
+    add(new THREE.CylinderGeometry(0.1 * s, 0.15 * s, 0.8 * s, 8), x, z, 0.4 * s);
+    for (let k = 0; k < 3; k++) add(new THREE.ConeGeometry((1.1 - k * 0.25) * s, 1.6 * s, 10), x, z, (1.4 + k * 0.8) * s);
+  };
+  // Ridged cone: radius wobbles with angle and height; integer angle multiples keep the UV seam closed.
+  const mountain = (x, z, r, h, ph) => {
+    const g = new THREE.ConeGeometry(r, h, 24, 8), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const t = (p.getY(i) + h / 2) / h, a = Math.atan2(p.getZ(i), p.getX(i));
+      const k = 1 + 0.12 * Math.sin(5 * a + ph + t * 4) + 0.06 * Math.sin(11 * a + t * 9);
+      p.setXYZ(i, p.getX(i) * k, p.getY(i), p.getZ(i) * k);
+    }
+    add(g, x, z, h / 2);
+  };
+
+  if (state.env === 'meadow') {
+    for (let i = 0; i < 30; i++) tree(...spot(clear, clear + 30), 0.8 + rand() * 0.8);
+  } else if (state.env === 'mountain') {
+    for (let i = 0; i < 7; i++) {
+      const [x, z] = spot(75, 95), h = 25 + rand() * 25;
+      mountain(x, z, h * (0.8 + rand() * 0.4), h, rand() * 6);
+    }
+    for (let i = 0; i < 30; i++) pine(...spot(clear, clear + 30), 0.8 + rand() * 0.7);
+  } else if (state.env === 'site') {
+    const zr = -(clear + 6);
+    add(new THREE.BoxGeometry(160, 0.02, 7), 0, zr, 0.01); // road
+    for (let x = -78; x < 80; x += 6) add(new THREE.BoxGeometry(3, 0.025, 0.15), x, zr, 0.015);
+    for (let x = -30; x <= 30; x += 4) add(new THREE.ConeGeometry(0.2, 0.7, 12), x, zr + 4, 0.35);
+    for (const x of [-22, 6, 30]) add(new THREE.ConeGeometry(2.5, 1.6, 16, 3), x, zr - 7, 0.8, true); // gravel piles
+    for (const [x, floors] of [[-25, 8], [0, 10], [25, 6]]) {
+      const z = zr - 24, h = floors * 3;
+      add(new THREE.BoxGeometry(14, h, 12), x, z, h / 2);
+      for (let f = 1; f < floors; f++) add(new THREE.BoxGeometry(14.1, 0.25, 12.1), x, z, f * 3);
+      for (let c = -2; c <= 2; c++) add(new THREE.BoxGeometry(0.2, h, 0.05), x + c * 2.8, z + 6.03, h / 2); // facade piers
+    }
+    add(new THREE.BoxGeometry(1, 32, 1, 1, 16, 1), 12, zr - 13, 16, true); // tower crane
+    add(new THREE.BoxGeometry(26, 0.8, 0.8, 26, 1, 1), 6, zr - 13, 32, true);
+  } else if (state.env === 'solar') {
+    // Shared cell grid drawn on top of every panel (6 x 3 cells).
+    const pts = [];
+    for (let i = 0; i <= 6; i++) pts.push(new THREE.Vector3(-2.1 + i * 0.7, 0.031, -1.1), new THREE.Vector3(-2.1 + i * 0.7, 0.031, 1.1));
+    for (let j = 0; j <= 3; j++) pts.push(new THREE.Vector3(-2.1, 0.031, -1.1 + j * 2.2 / 3), new THREE.Vector3(2.1, 0.031, -1.1 + j * 2.2 / 3));
+    const cells = new THREE.BufferGeometry().setFromPoints(pts);
+    for (let row = 0; row < 4; row++) for (let x = -32; x <= 32; x += 4.4) {
+      const z = -(clear + 3 + row * 6);
+      add(new THREE.BoxGeometry(0.1, 1.2, 0.1), x, z, 0.6);
+      const panel = add(new THREE.BoxGeometry(4.2, 0.06, 2.2), x, z, 1.35);
+      panel.rotation.x = 0.45;
+      panel.add(new THREE.LineSegments(cells, line));
+    }
+  }
+  scene.add(envGroup);
+}
+
+// --- UI ---
+const $ = id => document.getElementById(id);
+const eur = n => Math.round(n).toLocaleString('ro-RO') + ' €';
+
+// `palette` (name -> hex) renders the options as color swatches instead of text buttons.
+function choice(id, entries, current, key, palette) {
+  $(id).replaceChildren(...entries.map(([value, label]) => {
+    const b = document.createElement('button');
+    b.className = (value === current ? 'on ' : '') + (palette ? 'swatch' : '');
+    if (palette) { b.style.background = '#' + palette[value].toString(16).padStart(6, '0'); b.title = b.ariaLabel = label; }
+    else b.textContent = label;
+    b.onclick = () => set({ [key]: value });
+    return b;
+  }));
+}
+
+function set(patch) {
+  const resized = ['length', 'width', 'height', 'modules', 'couple'].some(k => k in patch && patch[k] !== state[k]);
+  const envChanged = 'env' in patch && patch.env !== state.env;
+  Object.assign(state, patch);
+  const max = openingWalls().reduce((sum, s) => sum + s.cap, 0);
+  $('note').textContent = state.windows > max ? `Maxim ${max} ferestre de acest tip pentru această configurație.` : '';
+  state.windows = Math.max(0, Math.min(state.windows, max));
+  build();
+  if (resized) frameCamera();
+  if (resized || envChanged) buildEnv();
+  render();
+}
+
+function render() {
+  const { l, w } = dims(), win = WINDOWS[state.winType], n = state.modules, [L, W] = footprint();
+  $('dims').textContent = `${state.length} × ${state.width} × ${state.height} mm exterior · ${(l * w).toFixed(1)} m²`
+    + (n > 1 ? ` · ${n} module: ${L.toFixed(2)} × ${W.toFixed(2)} m, ${(L * W).toFixed(1)} m²` : '');
+  choice('lengths', LENGTHS.map(v => [v, `${v / 1000} m`]), state.length, 'length');
+  choice('widths', WIDTHS.map(v => [v, `${v} mm`]), state.width, 'width');
+  choice('heights', Object.entries(HEIGHTS).map(([k, v]) => [+k, v]), state.height, 'height');
+  choice('envs', Object.entries(ENVS), state.env, 'env');
+  choice('modules', MODULES.map(v => [v, `${v}`]), state.modules, 'modules');
+  choice('couple', Object.entries(COUPLE), state.couple, 'couple');
+  choice('colors', Object.keys(COLORS).map(k => [k, k]), state.color, 'color', COLORS);
+  choice('frames', Object.keys(FRAMES).map(k => [k, k]), state.frame, 'frame', FRAMES);
+  choice('doorPos', Object.entries(DOOR_POS), state.doorPos, 'doorPos');
+  choice('winTypes', Object.entries(WINDOWS).map(([k, v]) => [k, v.label]), state.winType, 'winType');
+  $('count').textContent = state.windows;
+  const lines = [
+    [`${n > 1 ? n + ' × ' : ''}Container ${(l * w).toFixed(1)} m² × ${PRICE.perM2} €`, n * l * w * PRICE.perM2],
+    ...(state.height === 2896 ? [[`High cube${n > 1 ? ' × ' + n : ''}`, n * PRICE.highCube]] : []),
+    [DOORS[state.door].label, DOORS[state.door].price],
+    [`${win.label} × ${state.windows}`, win.price * state.windows],
+  ];
+  const total = Math.round(lines.reduce((sum, [, p]) => sum + p, 0)), vat = Math.round(total * VAT);
+  $('price').innerHTML = lines.map(([n, p]) => `<tr><td>${n}</td><td>${eur(p)}</td></tr>`).join('')
+    + `<tr class="total"><td>Total fără TVA</td><td>${eur(total)}</td></tr>`
+    + `<tr><td>TVA ${Math.round(VAT * 100)}%</td><td>${eur(vat)}</td></tr>`
+    + `<tr class="total"><td>Total cu TVA</td><td>${eur(total + vat)}</td></tr>`;
+}
+
+$('less').onclick = () => set({ windows: state.windows - 1 });
+$('more').onclick = () => set({ windows: state.windows + 1 });
+
+// Sun azimuth in degrees around the vertical axis; elevation and distance stay fixed.
+function setSun(deg) {
+  const a = THREE.MathUtils.degToRad(deg), r = Math.hypot(8, 10);
+  sun.position.set(r * Math.sin(a), 14, r * Math.cos(a));
+  $('sunDeg').textContent = `${deg}°`;
+}
+$('sun').oninput = e => setSun(+e.target.value);
+setSun(+$('sun').value);
+
+new ResizeObserver(() => {
+  renderer.setSize(view.clientWidth, view.clientHeight);
+  camera.aspect = view.clientWidth / view.clientHeight;
+  camera.updateProjectionMatrix();
+}).observe(view);
+
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+set({});
+buildEnv();
+frameCamera();
+</script>
+</body>
+</html>
