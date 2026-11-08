@@ -62,6 +62,7 @@
   <div class="opts" id="winTypes"></div>
   <h2>Poziție ușă</h2>
   <div class="opts" id="doorPos"></div>
+  <div class="opts" style="margin-top: 8px"><button id="doorToggle">Deschide ușa</button></div>
   <h2>Iluminat exterior</h2>
   <div class="opts" id="lamp"></div>
   <h2>Culoare panouri</h2>
@@ -97,7 +98,7 @@ const DOORS = {
   metal: { label: 'Ușă metalică', price: 650 },
 };
 const DOOR_POS = { side: 'Lateral', end: 'Capăt' };
-const DOOR = { w: 0.9, h: 2.0 };
+const DOOR = { w: 0.9, h: 2.0, open: 1.75 }; // open: outward swing angle in rad (~100°)
 const CANOPY = { w: DOOR.w + 0.2, d: 0.4 }; // door canopy: 20 cm wider than the door, 40 cm deep
 const LAMP = { label: 'Lampă LED exterior', price: 85 };
 // Scene units are meters; sill is measured from the floor.
@@ -167,6 +168,8 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 let group = new THREE.Group();
+// Door leaves (hinge pivots) from the last build; the animation loop swings them toward doorOpen.
+let doorLeaves = [], doorOpen = false, doorAngle = 0;
 function box(w, h, d, mat, x, y, z, parent = group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -184,6 +187,7 @@ function layout(widths, inner) {
 
 function build() {
   scene.remove(group);
+  doorLeaves = [];
   group.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   group = new THREE.Group();
   const { l, w, h } = dims();
@@ -194,6 +198,8 @@ function build() {
     trim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4 }),
     glass: new THREE.MeshStandardMaterial({ color: 0x5f7f99, roughness: 0.08, metalness: 0.6 }),
     lamp: new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe2b0, emissiveIntensity: 1.5 }),
+    steel: new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.5 }),
+    void: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 1 }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -276,8 +282,21 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
 function doorAt(g, x, m) {
   const y = POST + DOOR.h / 2;
   box(DOOR.w + 0.1, DOOR.h + 0.05, 0.04, m.trim, x, y + 0.025, 0, g);
-  box(DOOR.w, DOOR.h, 0.05, m.frame, x, y, 0, g);
-  box(0.12, 0.03, 0.05, m.trim, x + DOOR.w / 2 - 0.12, y, 0.04, g);
+  box(DOOR.w, DOOR.h, 0.002, m.void, x, y, 0.022, g); // dark doorway, seen when the leaf swings open
+  // Leaf hinges on its front-left edge and swings outward.
+  const leaf = new THREE.Group();
+  leaf.position.set(x - DOOR.w / 2, y, 0.025);
+  g.add(leaf);
+  doorLeaves.push(leaf);
+  box(DOOR.w, DOOR.h, 0.05, m.frame, DOOR.w / 2, 0, -0.025, leaf);
+  // Lever handle on both faces at 1.05 m: backplate, rose, lever pointing to the hinge, key cylinder.
+  const hx = DOOR.w - 0.09, hy = 1.05 - DOOR.h / 2;
+  for (const [s, z] of [[1, 0], [-1, -0.05]]) {
+    box(0.045, 0.24, 0.008, m.steel, hx, hy - 0.04, z + s * 0.004, leaf);
+    box(0.02, 0.02, 0.05, m.steel, hx, hy, z + s * 0.029, leaf);
+    box(0.13, 0.022, 0.018, m.steel, hx - 0.055, hy, z + s * 0.055, leaf);
+    box(0.016, 0.03, 0.006, m.void, hx, hy - 0.12, z + s * 0.011, leaf);
+  }
   // Fixed metal canopy over the door, sloped slightly outward, with a front lip.
   const cy = POST + DOOR.h + 0.15, tilt = 0.08;
   box(CANOPY.w, 0.04, CANOPY.d, m.frame, x, cy, CANOPY.d / 2, g).rotation.x = tilt;
@@ -481,13 +500,34 @@ function setSun(deg) {
 $('sun').oninput = e => setSun(+e.target.value);
 setSun(+$('sun').value);
 
+function toggleDoor() {
+  doorOpen = !doorOpen;
+  $('doorToggle').textContent = doorOpen ? 'Închide ușa' : 'Deschide ușa';
+  $('doorToggle').className = doorOpen ? 'on' : '';
+}
+$('doorToggle').onclick = toggleDoor;
+// A tap/click on the door leaf toggles it; drags (orbiting the camera) are ignored.
+const ray = new THREE.Raycaster(), down = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', e => down.set(e.clientX, e.clientY));
+renderer.domElement.addEventListener('pointerup', e => {
+  if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
+  if (ray.intersectObjects(doorLeaves, true).length) toggleDoor();
+});
+
 new ResizeObserver(() => {
   renderer.setSize(view.clientWidth, view.clientHeight);
   camera.aspect = view.clientWidth / view.clientHeight;
   camera.updateProjectionMatrix();
 }).observe(view);
 
-renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+renderer.setAnimationLoop(() => {
+  doorAngle += ((doorOpen ? DOOR.open : 0) - doorAngle) * 0.12;
+  for (const leaf of doorLeaves) leaf.rotation.y = -doorAngle;
+  controls.update();
+  renderer.render(scene, camera);
+});
 set({});
 buildEnv();
 frameCamera();
