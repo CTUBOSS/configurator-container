@@ -208,7 +208,7 @@ const WALLS = {
 const SPECS = { fire: 'Rezistent la foc', thermal: 'Termoizolant', corrosion: 'Protecție anticorozivă C3' };
 // Wall fixtures, sizes in mm; y = floor to bottom edge. Fixed types keep their catalogue size.
 const FIXTURES = {
-  socket: { label: 'Priză', w: 80, h: 80, y: 300, fixed: true },
+  socket: { label: 'Priză dublă', w: 150, h: 80, y: 300, fixed: true },
   rack: { label: 'Rack de perete', w: 600, h: 640, y: 1200, depth: 450 },
   hole: { label: 'Gol dreptunghiular (AC)', w: 800, h: 300, y: 1800 },
   gland: { label: 'Presetupă', w: 50, h: 50, y: 200, fixed: true },
@@ -325,6 +325,12 @@ function build() {
     fixDark: new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.6, ...INSIDE }),
     fixRack: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.5, metalness: 0.2, ...INSIDE }),
     fixHole: new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 1, ...INSIDE }),
+    fixRecess: new THREE.MeshStandardMaterial({ color: 0xe2e2de, roughness: 0.5, ...INSIDE }),
+    fixSilver: new THREE.MeshStandardMaterial({ color: 0xa9aeb3, roughness: 0.35, metalness: 0.4, ...INSIDE }),
+    fixDev: new THREE.MeshStandardMaterial({ color: 0x2c3036, roughness: 0.5, ...INSIDE }),
+    fixPort: new THREE.MeshStandardMaterial({ color: 0x0c0d0f, roughness: 0.8, ...INSIDE }),
+    fixLed: new THREE.MeshStandardMaterial({ color: 0x3ddc84, emissive: 0x3ddc84, emissiveIntensity: 1.5, ...INSIDE }),
+    fixGlass: new THREE.MeshStandardMaterial({ color: 0x1d2b33, roughness: 0.1, transparent: true, opacity: 0.35, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -449,12 +455,50 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
 function fixtureAt(type, g, w, h, m) {
   const fg = new THREE.Group(), zi = -0.09, inner = [];
   g.add(fg);
-  if (type === 'socket') {
+  if (type === 'socket') { // double socket: plate, two round recesses with pin holes and earth clips
     inner.push(box(w, h, 0.012, m.fixWhite, 0, 0, zi - 0.006, fg));
-    for (const s of [-1, 1]) inner.push(box(0.01, 0.01, 0.004, m.fixDark, s * 0.014, 0, zi - 0.013, fg));
-  } else if (type === 'rack') {
-    const d = FIXTURES.rack.depth / 1000;
-    inner.push(box(w, h, d, m.fixRack, 0, 0, zi - d / 2, fg), box(w - 0.06, h - 0.06, 0.004, m.fixDark, 0, 0, zi - d - 0.002, fg));
+    for (const sx of [-1, 1]) {
+      const cx = sx * w / 4, recess = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.004, 24), m.fixRecess);
+      recess.rotation.x = Math.PI / 2;
+      recess.position.set(cx, 0, zi - 0.0125);
+      fg.add(recess);
+      inner.push(recess);
+      for (const px of [-0.0095, 0.0095]) inner.push(box(0.005, 0.005, 0.003, m.fixDark, cx + px, 0, zi - 0.0145, fg));
+      for (const py of [-1, 1]) inner.push(box(0.008, 0.003, 0.003, m.fixSilver, cx, py * 0.019, zi - 0.0145, fg));
+    }
+  } else if (type === 'rack') { // wall-mount network cabinet: carcass, 19" rails, gear, glass door
+    const d = FIXTURES.rack.depth / 1000, t = 0.015, zf = zi - d, gw = Math.min(0.45, w - 2 * t - 0.04), U = 0.0445;
+    inner.push(box(w, h, t, m.fixRack, 0, 0, zi - t / 2, fg));
+    for (const s of [-1, 1]) {
+      inner.push(box(t, h, d, m.fixRack, s * (w / 2 - t / 2), 0, zi - d / 2, fg), box(w, t, d, m.fixRack, 0, s * (h / 2 - t / 2), zi - d / 2, fg));
+      inner.push(box(0.02, h - 2 * t, 0.02, m.fixSilver, s * (gw / 2 + 0.012), 0, zf + 0.06, fg)); // 19" mounting rail
+      for (let i = -2; i <= 2; i++) inner.push(box(0.003, h * 0.4, d * 0.06, m.fixDark, s * (w / 2 + 0.0005), 0, zi - d / 2 + i * d * 0.12, fg)); // side vents
+    }
+    // Gear from the top down while it fits: patch panels, cable manager, switches, shelf with a router.
+    let y = h / 2 - t - 0.03;
+    for (const kind of ['patch', 'cable', 'switch', 'patch', 'switch', 'shelf']) {
+      const uh = kind === 'shelf' ? 2 * U : U, cy = y - uh / 2, zg = zf + 0.07;
+      if (y - uh < -h / 2 + t + 0.02) break;
+      if (kind === 'shelf') {
+        inner.push(box(gw, 0.004, 0.3, m.fixSilver, 0, y - uh, zg + 0.15, fg), box(0.22, 0.04, 0.16, m.fixDev, -gw / 4, y - uh + 0.022, zg + 0.1, fg));
+        for (let i = 0; i < 3; i++) inner.push(box(0.006, 0.006, 0.002, m.fixLed, -gw / 4 - 0.08 + i * 0.015, y - uh + 0.03, zg + 0.019, fg));
+      } else {
+        const deep = kind === 'switch' ? 0.25 : 0.1, n = kind === 'cable' ? 6 : 24;
+        inner.push(box(gw, uh - 0.003, deep, m.fixDev, 0, cy, zg + deep / 2, fg));
+        for (let i = 0; i < n; i++) {
+          const px = -gw / 2 + 0.04 + i * (gw - 0.08) / (n - 1);
+          if (kind === 'cable') inner.push(box(0.012, uh * 0.8, 0.03, m.fixDark, px, cy, zg - 0.015, fg)); // cable fingers
+          else inner.push(box(0.011, 0.009, 0.002, m.fixPort, px, cy - 0.006, zg - 0.001, fg)); // RJ45 ports
+          if (kind === 'switch' && i % 2 === 0) inner.push(box(0.004, 0.004, 0.002, m.fixLed, px + 0.006, cy + 0.011, zg - 0.001, fg));
+        }
+      }
+      y -= uh + 0.006;
+    }
+    // Tinted glass door with frame and handle.
+    const zd = zf - 0.01;
+    inner.push(box(w - 0.06, h - 0.06, 0.004, m.fixGlass, 0, 0, zd, fg));
+    for (const s of [-1, 1]) inner.push(box(w, 0.03, 0.02, m.fixRack, 0, s * (h / 2 - 0.015), zd, fg), box(0.03, h, 0.02, m.fixRack, s * (w / 2 - 0.015), 0, zd, fg));
+    inner.push(box(0.015, 0.12, 0.02, m.fixSilver, w / 2 - 0.06, 0, zd - 0.02, fg));
   } else if (type === 'hole') {
     inner.push(box(w, h, 0.004, m.fixHole, 0, 0, zi - 0.002, fg));
     box(w, h, 0.004, m.void, 0, 0, 0.012, fg);
