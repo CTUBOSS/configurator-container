@@ -91,6 +91,7 @@
   .grp > summary { display: flex; align-items: center; gap: 8px; padding: 12px 0 6px; cursor: pointer; list-style: none; font-size: 14px; font-weight: 600; }
   .grp > summary::-webkit-details-marker { display: none; }
   .grp > summary svg { flex: none; color: #1f6feb; }
+  .grp > summary h2 { margin: 0; font: inherit; letter-spacing: 0; text-transform: none; color: inherit; } /* group titles are the h2 level */
   .grp > summary::after { content: ''; width: 7px; height: 7px; margin: 0 4px 0 auto; border-right: 2px solid #8a939b; border-bottom: 2px solid #8a939b; transform: rotate(45deg); transition: transform .15s; }
   .grp[open] > summary::after { transform: rotate(-135deg); }
   .grp:last-of-type { padding-bottom: 8px; }
@@ -126,7 +127,7 @@
       <div class="lang" role="group" aria-label="Language"><button id="langRo" type="button">RO</button><button id="langEn" type="button">EN</button></div></div>
     <p class="dims" id="dims"></p>
   </header>
-  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span data-t="Dimensiuni">Dimensiuni</span></summary>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><h2 data-t="Dimensiuni">Dimensiuni</h2></summary>
     <h3><span data-t="Lungime">Lungime</span> <b id="lengthVal"></b></h3>
     <input type="range" id="lengthRange" min="0" step="1" list="lengthTicks" data-ta="Lungime" aria-label="Lungime">
     <datalist id="lengthTicks"></datalist>
@@ -140,7 +141,7 @@
     <datalist id="heightTicks"></datalist>
     <div class="ticks" id="heightLabels" aria-hidden="true"></div>
   </details>
-  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M12 3v18M4 12h16"/></svg><span data-t="Ferestre și ușă">Ferestre și ușă</span></summary>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M12 3v18M4 12h16"/></svg><h2 data-t="Ferestre și ușă">Ferestre și ușă</h2></summary>
     <div class="row"><h3 data-t="Număr ferestre">Număr ferestre</h3>
       <div class="stepper"><button id="less" data-ta="Mai puține ferestre" aria-label="Mai puține ferestre">−</button><span id="count"></span><button id="more" data-ta="Mai multe ferestre" aria-label="Mai multe ferestre">+</button></div></div>
     <p class="note" id="note"></p>
@@ -150,16 +151,16 @@
       <div><h3 data-t="Lampă exterior">Lampă exterior</h3><div class="opts" id="lamp"></div></div>
     </div>
   </details>
-  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.9 1.2-1.7-.4-1 .3-2.3 1.4-2.3H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span data-t="Culori">Culori</span></summary>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.9 1.2-1.7-.4-1 .3-2.3 1.4-2.3H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><h2 data-t="Culori">Culori</h2></summary>
     <h3 data-t="Panouri">Panouri</h3><div class="opts" id="colors"></div>
     <h3 data-t="Cadru">Cadru</h3><div class="opts" id="frames"></div>
   </details>
-  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span data-t="Pereți">Pereți</span></summary>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><h2 data-t="Pereți">Pereți</h2></summary>
     <div class="opts col" id="walls"></div>
     <button id="secOpen" class="link" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span data-t="Vezi secțiunea peretelui">Vezi secțiunea peretelui</span></button>
     <h3 data-t="Specificații">Specificații</h3><div class="checks" id="specs"></div>
   </details>
-  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><span data-t="Interior">Interior</span></summary>
+  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><h2 data-t="Interior">Interior</h2></summary>
     <h3 data-t="Echipamente">Echipamente</h3>
     <form id="equipForm" class="equip">
       <input id="eqName" maxlength="30" data-tp="Denumire (opțional)" placeholder="Denumire (opțional)" data-ta="Denumire echipament" aria-label="Denumire echipament">
@@ -186,11 +187,11 @@
     <ul id="fixList" class="equip-list"></ul>
     <p class="note" id="fixNote"></p>
   </details>
-  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><span data-t="Cuplare module">Cuplare module</span></summary>
+  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><h2 data-t="Cuplare module">Cuplare module</h2></summary>
     <div class="opts" id="modules"></div>
     <div class="opts" id="couple" style="margin-top: 8px"></div>
   </details>
-  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l6 9h-4l4 6H6l4-6H6z"/><path d="M12 18v3"/></svg><span data-t="Mediu">Mediu</span></summary>
+  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l6 9h-4l4 6H6l4-6H6z"/><path d="M12 18v3"/></svg><h2 data-t="Mediu">Mediu</h2></summary>
     <div class="opts" id="envs"></div>
     <h3><span data-t="Direcție soare">Direcție soare</span> <b id="sunDeg"></b></h3>
     <input type="range" id="sun" min="0" max="359" value="135" data-ta="Direcție soare" aria-label="Direcție soare">
