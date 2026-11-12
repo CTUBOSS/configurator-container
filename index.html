@@ -45,6 +45,14 @@
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
   button.icon { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; }
   .hud button.on { border-color: rgba(31,111,235,.8); background: rgba(31,111,235,.75); color: #fff; }
+  .equip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .equip input { min-width: 0; padding: 8px; border: 1px solid #cfd6dc; border-radius: 6px; font: inherit; font-size: 16px; }
+  .equip #eqName, .equip button { grid-column: 1 / -1; }
+  .equip-list { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; }
+  .equip-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .equip-list .sw { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+  .equip-list .txt { flex: 1; min-width: 0; }
+  .equip-list button { min-height: 0; padding: 2px 10px; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -54,7 +62,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button></div></div>
+<div id="view"><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button></div></div>
 <aside>
   <h1>Configurator container DUALMAN</h1>
   <p class="dims" id="dims"></p>
@@ -78,6 +86,17 @@
   <div class="opts" id="colors"></div>
   <h2>Culoare cadru</h2>
   <div class="opts" id="frames"></div>
+  <h2>Echipamente interioare</h2>
+  <form id="equipForm" class="equip">
+    <input id="eqName" maxlength="30" placeholder="Denumire (opțional)" aria-label="Denumire echipament">
+    <input id="eqL" type="number" min="100" max="12000" step="10" required placeholder="L mm" aria-label="Lungime (mm)">
+    <input id="eqW" type="number" min="100" max="3000" step="10" required placeholder="l mm" aria-label="Lățime (mm)">
+    <input id="eqH" type="number" min="100" max="2800" step="10" required placeholder="H mm" aria-label="Înălțime (mm)">
+    <input id="eqKg" type="number" min="1" max="30000" step="1" required placeholder="kg" aria-label="Greutate (kg)">
+    <button type="submit">Adaugă echipament</button>
+  </form>
+  <ul id="equipList" class="equip-list"></ul>
+  <p class="note" id="equipNote"></p>
   <h2>Cuplare module</h2>
   <div class="opts" id="modules"></div>
   <div class="opts" id="couple" style="margin-top: 8px"></div>
@@ -110,6 +129,7 @@ const DOOR_POS = { side: 'Lateral', end: 'Capăt' };
 const DOOR = { w: 0.9, h: 2.0, open: 1.75 }; // open: outward swing angle in rad (~100°)
 const CANOPY = { w: DOOR.w + 0.2, d: 0.4 }; // door canopy: 20 cm wider than the door, 40 cm deep
 const LAMP = { label: 'Lampă LED exterior', price: 85 };
+const EQUIP_COLORS = [0xe07a3f, 0x3f8fe0, 0x59a85c, 0xb05fc4, 0xd4b13a];
 // Scene units are meters; sill is measured from the floor.
 const WINDOWS = {
   std: { label: 'Standard 900×1100', w: 0.9, h: 1.1, sill: 0.9, price: 380 },
@@ -126,7 +146,7 @@ const RIB = { pitch: 0.25, base: 0.03, top: 0.01, d: 0.005 }; // Izoval-type wal
 const MODULES = [1, 2, 3, 4, 5, 6];
 const COUPLE = { width: 'Pe lățime', length: 'Pe lungime' };
 const state = { frame: 'RAL 9005 negru', modules: 1, couple: 'width', env: 'nature',
-  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', lamp: false, winType: 'std', windows: 3 };
+  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', lamp: false, equipment: [], winType: 'std', windows: 3 };
 const dims = () => ({ l: state.length / 1000, w: state.width / 1000, h: state.height / 1000 });
 
 // Center [x, z] of module i in the coupled assembly (identical modules, centered on the origin).
@@ -183,7 +203,7 @@ scene.add(ground);
 
 let group = new THREE.Group();
 // Door leaves (hinge pivots) from the last build; the animation loop swings them toward doorOpen.
-let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false;
+let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false, interiorView = false, equipMeshes = [];
 function box(w, h, d, mat, x, y, z, parent = group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -202,7 +222,7 @@ function layout(widths, inner) {
 function build() {
   scene.remove(group);
   doorLeaves = [];
-  group.traverse(o => { if (o.isMesh) { o.geometry.dispose(); [].concat(o.material).forEach(mat => mat.dispose()); } });
+  group.traverse(o => { if (o.geometry) { o.geometry.dispose(); [].concat(o.material).forEach(mat => mat.dispose()); } });
   group = new THREE.Group();
   const { l, w, h } = dims();
   const m = {
@@ -227,6 +247,8 @@ function build() {
     fabric: new THREE.MeshStandardMaterial({ color: 0x56606b, roughness: 0.95, ...INSIDE }),
     fabricLight: new THREE.MeshStandardMaterial({ color: 0x6b7682, roughness: 0.95, ...INSIDE }),
     binders: [0x2f5d8a, 0x9c3b32, 0x6b7378, 0x3d6b4a, 0xc9a43b].map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...INSIDE })),
+    equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...INSIDE })),
+    equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -265,6 +287,14 @@ function build() {
   const room = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, rh, W - 0.2), [m.wall, m.wall, m.ceiling, m.floor, m.wall, m.wall]);
   room.position.y = POST + rh / 2 + 0.005; // floor 5 mm above the bottom rails so they don't z-fight
   group.add(room);
+  // User equipment: boxes on the floor, draggable in interior view.
+  equipMeshes = state.equipment.map((it, i) => {
+    clampItem(it);
+    const mesh = box(it.l / 1000, it.h / 1000, it.w / 1000, m.equip[i % m.equip.length], it.x, POST + 0.005 + it.h / 2000, it.z);
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), m.equipLine));
+    mesh.userData.item = it;
+    return mesh;
+  });
 
   // Openings go on the assembly's exterior walls; an end door goes on the last module's +x end.
   for (const s of openingWalls()) {
@@ -279,6 +309,7 @@ function build() {
   }
 
   scene.add(group);
+  applyView();
 }
 
 // Calls place(t) for evenly spaced rib positions along a wall of length `len`, centered on 0.
@@ -323,7 +354,7 @@ function doorAt(g, x, m) {
   for (const sx of [-1, 1]) box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g);
   box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g);
   const [fx, fz] = furnish(g, x, m);
-  box(0.6, 0.02, 0.6, m.ceilLight, fx, dims().h - POST - 0.06, fz + 0.3, g);
+  box(0.6, 0.02, 0.6, m.ceilLight, fx, dims().h - POST - 0.06, fz + 0.3, g).userData.ceiling = true;
   if (lightsOn) {
     const ceiling = new THREE.PointLight(0xfff4e0, 4, 7);
     ceiling.position.set(fx, dims().h - POST - 0.3, fz + 0.3);
@@ -639,6 +670,94 @@ renderer.domElement.addEventListener('pointerup', e => {
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
   if (ray.intersectObjects(doorLeaves, true).length) toggleDoor();
 });
+
+// Interior view: hide the exterior shell and draw the interior without the doorway stencil.
+function applyView() {
+  group.traverse(o => {
+    if (!o.geometry) return;
+    const mats = [].concat(o.material);
+    const inside = mats.some(mt => mt.stencilFunc === THREE.EqualStencilFunc);
+    if (inside) mats.forEach(mt => { mt.stencilWrite = !interiorView; });
+    // The ceiling is culled from above, so its light panel would float; hide it with the shell.
+    o.visible = !interiorView || (inside && !o.userData.ceiling);
+  });
+}
+function toggleInterior(on = !interiorView) {
+  interiorView = on;
+  $('hudInterior').className = on ? 'on' : '';
+  applyView();
+  if (!on) return frameCamera();
+  const [L, W] = footprint(), d = Math.max(L, W, 5) * 1.6;
+  camera.position.set(d * 0.2, d * 0.9, d * 0.5);
+  controls.target.set(0, 0.5, 0);
+}
+$('hudInterior').onclick = () => toggleInterior();
+
+// Keeps an equipment box inside the room (centered when it is larger than the room).
+function clampItem(it) {
+  const [L, W] = footprint(), hx = (L - 0.2 - it.l / 1000) / 2, hz = (W - 0.2 - it.w / 1000) / 2;
+  it.x = hx < 0 ? 0 : Math.max(-hx, Math.min(hx, it.x));
+  it.z = hz < 0 ? 0 : Math.max(-hz, Math.min(hz, it.z));
+}
+$('equipForm').onsubmit = e => {
+  e.preventDefault();
+  const [L, W] = footprint(), num = id => Math.round(+$(id).value), roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
+  const it = { name: $('eqName').value.trim() || `Echipament ${state.equipment.length + 1}`, l: num('eqL'), w: num('eqW'), h: num('eqH'), kg: num('eqKg'), x: 0, z: 0 };
+  if (it.l > (L - 0.2) * 1000 || it.w > (W - 0.2) * 1000 || it.h > roomH) {
+    $('equipNote').textContent = `Nu încape: interiorul are ${Math.round((L - 0.2) * 1000)} × ${Math.round((W - 0.2) * 1000)} × ${roomH} mm.`;
+    return;
+  }
+  state.equipment.push(it);
+  e.target.reset();
+  build();
+  renderEquip();
+  toggleInterior(true);
+};
+function renderEquip() {
+  $('equipList').replaceChildren(...state.equipment.map((it, i) => {
+    const li = document.createElement('li'), sw = document.createElement('span'), txt = document.createElement('span'), del = document.createElement('button');
+    sw.className = 'sw';
+    sw.style.background = '#' + EQUIP_COLORS[i % EQUIP_COLORS.length].toString(16).padStart(6, '0');
+    txt.className = 'txt';
+    txt.textContent = `${it.name} · ${it.l}×${it.w}×${it.h} mm · ${it.kg} kg`;
+    del.textContent = '×';
+    del.ariaLabel = `Șterge ${it.name}`;
+    del.onclick = () => { state.equipment.splice(i, 1); build(); renderEquip(); };
+    li.append(sw, txt, del);
+    return li;
+  }));
+  const kg = state.equipment.reduce((sum, it) => sum + it.kg, 0);
+  $('equipNote').textContent = state.equipment.length ? `Total echipamente: ${kg} kg` : '';
+}
+
+// Drag equipment across the floor in interior view; the camera holds still while dragging.
+const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
+let drag = null;
+function pointerRay(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
+}
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!interiorView) return;
+  pointerRay(e);
+  const mesh = ray.intersectObjects(equipMeshes, false)[0]?.object;
+  if (!mesh) return;
+  floorPlane.constant = -mesh.position.y;
+  ray.ray.intersectPlane(floorPlane, hit);
+  drag = { mesh, dx: mesh.position.x - hit.x, dz: mesh.position.z - hit.z };
+  controls.enabled = false;
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!drag) return;
+  pointerRay(e);
+  if (!ray.ray.intersectPlane(floorPlane, hit)) return;
+  const it = drag.mesh.userData.item;
+  it.x = hit.x + drag.dx;
+  it.z = hit.z + drag.dz;
+  clampItem(it);
+  drag.mesh.position.set(it.x, drag.mesh.position.y, it.z);
+});
+renderer.domElement.addEventListener('pointerup', () => { drag = null; controls.enabled = true; });
 
 new ResizeObserver(() => {
   renderer.setSize(view.clientWidth, view.clientHeight);
