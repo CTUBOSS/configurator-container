@@ -82,8 +82,6 @@
     gap: 8px; padding: 6px 6px 6px 12px; border-radius: 10px; background: rgba(255,255,255,.92); box-shadow: 0 2px 10px rgba(0,0,0,.12); font-size: 13px; }
   .sel-info[hidden] { display: none; }
   .sel-info button { min-height: 0; padding: 4px 10px; border-color: #e5a29b; color: #b3261e; }
-  .snap { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer; }
-  .snap input { flex: none; width: 18px; height: 18px; margin: 0; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -149,7 +147,6 @@
     <select id="fxN" aria-label="Număr presetupe" hidden disabled></select>
     <button type="submit">Adaugă pe perete</button>
   </form>
-  <label class="snap"><input type="checkbox" id="snapSockets" checked> Snap: aliniază prizele pe verticală</label>
   <p class="hint" id="fxHint" hidden></p>
   <p class="hint">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.</p>
   <ul id="fixList" class="equip-list"></ul>
@@ -168,6 +165,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // Exterior dimensions in mm; prices are placeholder EUR values.
 const LENGTHS = [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000];
@@ -322,9 +320,11 @@ function build() {
     // Low metalness: without an env map, metal renders far darker than its RAL swatch.
     frame: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5, metalness: 0.1 }),
     trim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4 }),
-    glass: new THREE.MeshStandardMaterial({ color: 0x5f7f99, roughness: 0.08, metalness: 0.6 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x6f8fa8, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.35 }),
+    winTrim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4, ...OUTSIDE }),
     lamp: new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe2b0, emissiveIntensity: lightsOn ? 1.5 : 0 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.5 }),
+    panic: new THREE.MeshStandardMaterial({ color: 0xc62828, roughness: 0.45 }), // panic bar red
     void: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 1 }),
     doorTrim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4, ...OUTSIDE }),
     mask: new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp }),
@@ -335,7 +335,7 @@ function build() {
     lumBody: new THREE.MeshStandardMaterial({ color: 0xd5d8db, roughness: 0.5, ...INSIDE }),
     lumCap: new THREE.MeshStandardMaterial({ color: 0x8f959b, roughness: 0.5, ...INSIDE }),
     lumDiffuser: new THREE.MeshStandardMaterial({ color: 0xf7f8f8, emissive: 0xffffff, emissiveIntensity: lightsOn ? 1.4 : 0.08, roughness: 0.3, ...INSIDE }),
-    innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.6, roughness: 0.1, ...INSIDE }),
+    innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.2, roughness: 0.1, transparent: true, opacity: 0.3, ...INSIDE }),
     equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...INSIDE })),
     equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
     cutWall: new THREE.MeshStandardMaterial({ color: 0xeeece7, roughness: 0.9 }),
@@ -353,6 +353,7 @@ function build() {
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
+    holeDeep: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x000000 : 0x55595e }),
   };
 
   box(l - 0.04, h - POST - 0.02, w - 0.04, m.panel, 0, (h + POST - 0.02) / 2, 0);
@@ -364,9 +365,10 @@ function build() {
     const face = wall(x, z, rot);
     ribs(len - 2 * POST, t => { const r = new THREE.Mesh(ribGeo, m.panel); r.position.x = t; r.receiveShadow = true; face.add(r); }, rib.pitch);
   }
+  const castGeo = castingGeometries();
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     box(POST, h, POST, m.frame, sx * (l - POST) / 2, h / 2, sz * (w - POST) / 2);
-    for (const top of [false, true]) cornerCasting(sx, sz, top, { l, w, h }, m);
+    for (const top of [false, true]) cornerCasting(sx, sz, top, { l, w, h }, m, castGeo);
   }
   for (const y of [POST / 2, h - POST / 2]) {
     for (const sz of [-1, 1]) box(l, POST, POST, m.frame, 0, y, sz * (w - POST) / 2);
@@ -397,6 +399,12 @@ function build() {
     wallMesh.position.set(x, POST + 0.005, z);
     wallMesh.castShadow = wallMesh.receiveShadow = true;
     wallMesh.userData = { cutaway: true, normal: new THREE.Vector3(nx, 0, nz) };
+    // 100 mm ceiling slab, cut along the wall top and reaching 150 mm into the room (squashes with the wall).
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(nx ? sx + 0.15 : sx, 0.1, nz ? sz + 0.15 : sz), [m.cutWall, m.cutWall, m.cut, m.cutWall, m.cutWall, m.cutWall]);
+    slab.position.set(-nx * 0.075, rh + 0.05, -nz * 0.075);
+    slab.castShadow = slab.receiveShadow = true;
+    slab.userData.cutaway = true;
+    wallMesh.add(slab);
     group.add(wallMesh);
     return wallMesh;
   });
@@ -475,14 +483,50 @@ function ribGeometry(height, rib) {
   return g;
 }
 
-// ISO corner casting with its oval twistlock / lifting apertures on the visible faces.
-function cornerCasting(sx, sz, top, { l, w, h }, m) {
+// Obround (stadium) outline w × h centered on the origin, for casting apertures.
+function stadium(w, h) {
+  const r = h / 2, s = new THREE.Shape();
+  s.moveTo(-w / 2 + r, -r);
+  s.lineTo(w / 2 - r, -r);
+  s.absarc(w / 2 - r, 0, r, -Math.PI / 2, Math.PI / 2);
+  s.lineTo(-w / 2 + r, r);
+  s.absarc(-w / 2 + r, 0, r, Math.PI / 2, 3 * Math.PI / 2);
+  return s;
+}
+
+// Shared casting geometry per build: rounded body; each aperture = raised lip ring, recess, darker core.
+function castingGeometries() {
+  const ap = (w, h) => {
+    const lip = stadium(w + 0.014, h + 0.014);
+    lip.holes.push(stadium(w, h));
+    return [new THREE.ExtrudeGeometry(lip, { depth: 0.003, bevelEnabled: false, curveSegments: 12 }),
+      new THREE.ShapeGeometry(stadium(w, h), 12), new THREE.ShapeGeometry(stadium(w * 0.7, h * 0.6), 12)];
+  };
+  return { body: new RoundedBoxGeometry(CASTING.x, CASTING.y, CASTING.z, 3, 0.01), side: ap(0.078, 0.051), end: ap(0.064, 0.051), top: ap(0.124, 0.063) };
+}
+
+// ISO 1161 corner casting: rounded cast-steel block with obround apertures on the side and end faces,
+// plus the twistlock slot on top castings.
+function cornerCasting(sx, sz, top, { l, w, h }, m, geo) {
   const C = CASTING, e = 0.004; // castings stand slightly proud of the frame
   const x = sx * (l / 2 - C.x / 2 + e), y = top ? h - C.y / 2 + e : C.y / 2, z = sz * (w / 2 - C.z / 2 + e);
-  box(C.x, C.y, C.z, m.casting, x, y, z);
-  box(0.078, 0.051, 0.004, m.hole, x, y, z + sz * C.z / 2);
-  box(0.004, 0.051, 0.064, m.hole, x + sx * C.x / 2, y, z);
-  if (top) box(0.124, 0.004, 0.063, m.hole, x, y + C.y / 2, z);
+  const body = new THREE.Mesh(geo.body, m.casting);
+  body.position.set(x, y, z);
+  body.castShadow = body.receiveShadow = true;
+  group.add(body);
+  const faces = [[geo.side, x, y, z + sz * C.z / 2, 0, sz > 0 ? 0 : Math.PI], [geo.end, x + sx * C.x / 2, y, z, 0, sx * Math.PI / 2]];
+  if (top) faces.push([geo.top, x, y + C.y / 2, z, -Math.PI / 2, 0]);
+  for (const [[lip, recess, core], px, py, pz, rx, ry] of faces) {
+    const a = new THREE.Group(); // aperture frame: +z points out of the face
+    a.position.set(px, py, pz);
+    a.rotation.set(rx, ry, 0, 'YXZ');
+    group.add(a);
+    for (const [g, mat, dz] of [[lip, m.casting, 0], [recess, m.hole, 0.0005], [core, m.holeDeep, 0.001]]) {
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.position.z = dz;
+      a.add(mesh);
+    }
+  }
 }
 
 // One wall fixture, built around its own origin in a group inside wall frame g
@@ -590,24 +634,29 @@ function doorAt(g, x, m) {
   // Reveal through the wall thickness (local -z is inward).
   for (const sx of [-1, 1]) cutFaces.push([box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g), g]);
   cutFaces.push([box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g), g]);
-  // The door as seen from inside, shown only in the interior view.
+  // The door as seen from inside, shown only in the interior view (with the same panic bar).
   const insideFace = box(DOOR.w, DOOR.h, 0.012, m.cutDoor, x, y, -0.096, g);
-  insideFace.userData.cutaway = true;
-  cutFaces.push([insideFace, g]);
+  const inside = [insideFace, box(DOOR.w - 0.22, 0.045, 0.04, m.panic, x, POST + 1.0, -0.162, g)];
+  for (const s of [-1, 1]) inside.push(box(0.07, 0.11, 0.07, m.void, x + s * (DOOR.w / 2 - 0.09), POST + 1.0, -0.137, g));
+  for (const mesh of inside) { mesh.userData.cutaway = true; cutFaces.push([mesh, g]); }
   // Leaf hinges on its front-left edge and swings outward.
   const leaf = new THREE.Group();
   leaf.position.set(x - DOOR.w / 2, y, 0.025);
   g.add(leaf);
   doorLeaves.push(leaf);
   box(DOOR.w, DOOR.h, 0.05, m.frame, DOOR.w / 2, 0, -0.025, leaf);
-  // Lever handle on both faces at 1.05 m: backplate, rose, lever pointing to the hinge, key cylinder.
+  // Outside: lever handle at 1.05 m (backplate, rose, lever pointing to the hinge, key cylinder).
   const hx = DOOR.w - 0.09, hy = 1.05 - DOOR.h / 2;
-  for (const [s, z] of [[1, 0], [-1, -0.05]]) {
+  for (const [s, z] of [[1, 0]]) {
     box(0.045, 0.24, 0.008, m.steel, hx, hy - 0.04, z + s * 0.004, leaf);
     box(0.02, 0.02, 0.05, m.steel, hx, hy, z + s * 0.029, leaf);
     box(0.13, 0.022, 0.018, m.steel, hx - 0.055, hy, z + s * 0.055, leaf);
     box(0.016, 0.03, 0.006, m.void, hx, hy - 0.12, z + s * 0.011, leaf);
   }
+  // Inside: panic bar at 1.0 m - a push bar between two end housings across the leaf.
+  const py = 1.0 - DOOR.h / 2;
+  for (const px of [0.09, DOOR.w - 0.09]) box(0.07, 0.11, 0.07, m.void, px, py, -0.085, leaf);
+  box(DOOR.w - 0.22, 0.045, 0.04, m.panic, DOOR.w / 2, py, -0.11, leaf);
   // Fixed metal canopy over the door, sloped slightly outward, with a front lip.
   const cy = POST + DOOR.h + 0.15, tilt = 0.08;
   box(CANOPY.w, 0.04, CANOPY.d, m.frame, x, cy, CANOPY.d / 2, g).rotation.x = tilt;
@@ -627,11 +676,24 @@ function doorAt(g, x, m) {
 
 function windowAt(g, x, m) {
   const win = WINDOWS[state.winType], y = POST + win.sill + win.h / 2;
-  box(win.w + 0.1, win.h + 0.1, 0.04, m.trim, x, y, 0, g);
+  // Translucent: like the doorway, a stencil mask opens the facade so the interior shows through tinted glass.
+  const mask = new THREE.Mesh(new THREE.PlaneGeometry(win.w, win.h), m.mask);
+  mask.position.set(x, y, 0.021);
+  mask.renderOrder = -1;
+  g.add(mask);
+  box(win.w + 0.1, win.h + 0.1, 0.04, m.winTrim, x, y, 0, g); // stencil keeps only the frame around the opening
   box(win.w, win.h, 0.06, m.glass, x, y, 0, g);
+  for (const s of [-1, 1]) { // reveal through the wall thickness
+    cutFaces.push([box(0.02, win.h, 0.11, m.inner, x + s * (win.w / 2 - 0.01), y, -0.035, g), g]);
+    cutFaces.push([box(win.w, 0.02, 0.11, m.inner, x, y + s * (win.h / 2 - 0.01), -0.035, g), g]);
+  }
   const bars = Math.max(1, Math.round(win.w / 0.7) - 1);
-  // Inner face of the window on the interior wall (local z -0.09), lit like daylight.
-  cutFaces.push([box(win.w + 0.1, win.h + 0.1, 0.01, m.inner, x, y, -0.096, g), g], [box(win.w, win.h, 0.012, m.innerGlass, x, y, -0.096, g), g]);
+  // Inner face on the interior wall (local z -0.09): frame around a translucent pane.
+  for (const s of [-1, 1]) {
+    cutFaces.push([box(win.w + 0.1, 0.05, 0.01, m.inner, x, y + s * (win.h / 2 + 0.025), -0.096, g), g]);
+    cutFaces.push([box(0.05, win.h, 0.01, m.inner, x + s * (win.w / 2 + 0.025), y, -0.096, g), g]);
+  }
+  cutFaces.push([box(win.w, win.h, 0.012, m.innerGlass, x, y, -0.096, g), g]);
   for (let i = 1; i <= bars; i++) {
     const bx = x - win.w / 2 + i * win.w / (bars + 1);
     box(0.04, win.h, 0.07, m.trim, bx, y, 0, g);
@@ -1088,17 +1150,6 @@ renderer.domElement.addEventListener('pointerdown', e => {
   }
   controls.enabled = false;
 });
-// Dashed vertical guide on the wall (frame g, local x) while a socket is snapped under another one.
-let guide = null;
-function showGuide(g, x, floor, roomH) {
-  if (guide) { guide.parent?.remove(guide); guide.geometry.dispose(); guide.material.dispose(); guide = null; }
-  if (x === null) return;
-  guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, floor, -0.1), new THREE.Vector3(x, floor + roomH, -0.1)]),
-    new THREE.LineDashedMaterial({ color: 0x1f6feb, dashSize: 0.05, gapSize: 0.03, depthTest: false }));
-  guide.computeLineDistances();
-  guide.renderOrder = 10;
-  g.add(guide);
-}
 renderer.domElement.addEventListener('pointermove', e => {
   if (!drag) return;
   pointerRay(e);
@@ -1117,17 +1168,11 @@ renderer.domElement.addEventListener('pointermove', e => {
   const y = Math.max(floor + fh / 2, Math.min(floor + roomH - fh / 2, local.y + drag.dy));
   it.x = Math.round((span / 2 - x - fw / 2) * 100) * 10; // mm, in 10 mm steps
   it.y = Math.round((y - floor - fh / 2) * 100) * 10;
-  // Snap: a socket whose center is within 40 mm of another socket's center line on the same wall lines up under it.
-  const snapX = $('snapSockets').checked && it.type === 'socket'
-    ? state.fixtures.filter(o => o !== it && o.type === 'socket' && o.wall === it.wall).map(o => o.x + o.w / 2).find(c => Math.abs(c - (it.x + it.w / 2)) <= 40)
-    : undefined;
-  if (snapX !== undefined) it.x = snapX - it.w / 2;
-  showGuide(g, snapX === undefined ? null : span / 2 - snapX / 1000, floor, roomH);
   fg.position.set(span / 2 - it.x / 1000 - fw / 2, floor + it.y / 1000 + fh / 2, 0);
-  showTip(e, `X ${it.x} mm · Y ${it.y} mm${snapX === undefined ? '' : ' · aliniat'}`);
+  showTip(e, `X ${it.x} mm · Y ${it.y} mm`);
 });
 renderer.domElement.addEventListener('pointerup', () => {
-  if (drag?.fix) { renderFixtures(); $('dragTip').hidden = true; showGuide(null, null); }
+  if (drag?.fix) { renderFixtures(); $('dragTip').hidden = true; }
   drag = null;
   controls.enabled = true;
 });
