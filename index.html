@@ -114,7 +114,6 @@
   <div class="opts" id="winTypes"></div>
   <h2>Poziție ușă</h2>
   <div class="opts" id="doorPos"></div>
-  <div class="opts" style="margin-top: 8px"><button id="doorToggle" class="on">Închide ușa</button></div>
   <h2>Iluminat exterior</h2>
   <div class="opts" id="lamp"></div>
   <h2>Culoare panouri</h2>
@@ -922,10 +921,10 @@ setSun(+$('sun').value);
 
 function toggleDoor() {
   doorOpen = !doorOpen;
-  $('doorToggle').textContent = $('hudDoor').title = $('hudDoor').ariaLabel = doorOpen ? 'Închide ușa' : 'Deschide ușa';
-  $('doorToggle').className = $('hudDoor').className = doorOpen ? 'on' : '';
+  $('hudDoor').title = $('hudDoor').ariaLabel = doorOpen ? 'Închide ușa' : 'Deschide ușa';
+  $('hudDoor').className = doorOpen ? 'on' : '';
 }
-$('doorToggle').onclick = $('hudDoor').onclick = toggleDoor;
+$('hudDoor').onclick = toggleDoor;
 // Light switch: interior ceiling light plus the exterior lamp (fitted on first switch-on).
 function toggleLights() {
   lightsOn = !lightsOn;
