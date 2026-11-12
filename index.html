@@ -198,7 +198,7 @@
   </details>
   <footer class="price">
     <details><summary><span data-t="Total cu TVA">Total cu TVA</span><b id="priceTotal"></b></summary>
-      <table id="price"></table></details>
+      <table id="price"></table><p class="hint" data-t="Prețuri orientative, cu valori generice. Lista finală de prețuri urmează.">Prețuri orientative, cu valori generice. Lista finală de prețuri urmează.</p></details>
     <div class="chips" id="specChips"></div>
   </footer>
 </aside>
@@ -211,7 +211,15 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 const LENGTHS = [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000];
 const WIDTHS = [2438, 3000];
 const HEIGHTS = { 2591: 'Standard 2591', 2896: 'High cube 2896' };
-const PRICE = { perM2: 480, highCube: 450 };
+// All prices in one place (EUR, excl. VAT). Placeholder values until the pricing analysis is in.
+const PRICE = {
+  perM2: 480, highCube: 450, // container shell per m² of floor; high-cube surcharge per module
+  door: 650, lamp: 85, window: 380, // per piece
+  socket: 45, rack: 1200, ac: 950, // wall fixtures, per piece
+  glandPlate: 60, gland: 18, // gland plate: per plate plus per gland
+  woolWall: 30, // mineral-wool wall instead of the PIR sandwich, per m² of floor
+  fire: 40, thermal: 25, corrosion: 15, // specification surcharges, per m² of floor
+};
 const VAT = 0.21; // Romania standard VAT rate since 2025-08-01
 const COLORS = { 'RAL 9010 alb': 0xf1ede1, 'RAL 9016 alb trafic': 0xf6f6f2, 'RAL 7035 gri deschis': 0xc5c7c4 };
 const FRAMES = {
@@ -219,18 +227,18 @@ const FRAMES = {
   'RAL 7037 gri praf': 0x7a7b7a, 'RAL 9006 aluminiu': 0xa1a1a0, 'RAL 7035 gri deschis': 0xc5c7c4, 'RAL 9010 alb': 0xf1ede1,
 };
 const DOORS = {
-  metal: { label: 'Ușă metalică', price: 650 },
+  metal: { label: 'Ușă metalică', price: PRICE.door },
 };
 const DOOR_POS = { side: 'Lateral', end: 'Capăt' };
 const DOOR = { w: 0.9, h: 2.0, open: 1.75 }; // open: outward swing angle in rad (~100°)
 const CANOPY = { w: DOOR.w + 0.2, d: 0.4 }; // door canopy: 20 cm wider than the door, 40 cm deep
-const LAMP = { label: 'Lampă LED exterior', price: 85 };
+const LAMP = { label: 'Lampă LED exterior', price: PRICE.lamp };
 const EQUIP_COLORS = [0xe07a3f, 0x3f8fe0, 0x59a85c, 0xb05fc4, 0xd4b13a];
 // Scene units are meters; sill is measured from the floor.
 // 'none' keeps the standard size so the window stepper can switch straight back to it.
 const WINDOWS = {
   none: { label: 'Fără ferestre', w: 0.9, h: 1.1, sill: 0.9, price: 0 },
-  std: { label: 'Standard 900×1100', w: 0.9, h: 1.1, sill: 0.9, price: 380 },
+  std: { label: 'Standard 900×1100', w: 0.9, h: 1.1, sill: 0.9, price: PRICE.window },
 };
 const POST = 0.15; // corner post / rail thickness
 // Stencil: the doorway mask marks its pixels 1; the facade skips them and the interior draws only there.
@@ -1027,6 +1035,8 @@ const $ = id => document.getElementById(id);
 const eur = n => Math.round(n).toLocaleString(loc()) + ' €';
 // i18n: the Romanian strings are the keys; EN maps them (with {0}-style placeholders) to English.
 const EN = {
+"{0} × {1} ({2} presetupe)": "{0} × {1} ({2} glands)",
+"Prețuri orientative, cu valori generice. Lista finală de prețuri urmează.": "Indicative prices with placeholder values. The final price list is coming.",
 "Configurator container DUALMAN": "DUALMAN container configurator",
 "Dimensiuni": "Dimensions",
 "Lungime": "Length",
@@ -1201,6 +1211,18 @@ function render() {
     ...(state.lamp ? [[tr(LAMP.label), LAMP.price]] : []),
     ...(state.windows ? [[`${tr(win.label)} × ${state.windows}`, win.price * state.windows]] : []),
   ];
+  // Wall fixtures by type, mineral-wool wall surcharge and ticked specifications (both per m² of floor).
+  const area = n * l * w;
+  for (const type of Object.keys(FIXTURES)) {
+    const list = state.fixtures.filter(f => f.type === type);
+    if (!list.length) continue;
+    if (type === 'gland') {
+      const glands = list.reduce((sum, it) => sum + it.n, 0);
+      lines.push([tr('{0} × {1} ({2} presetupe)', tr(FIXTURES.gland.label), list.length, glands), list.length * PRICE.glandPlate + glands * PRICE.gland]);
+    } else lines.push([`${tr(FIXTURES[type].label)} × ${list.length}`, list.length * PRICE[type]]);
+  }
+  if (state.wall === 'wool') lines.push([`${tr(WALLS.wool.label)} · ${area.toFixed(1)} m² × ${PRICE.woolWall} €`, area * PRICE.woolWall]);
+  for (const k of state.specs) lines.push([`${tr(SPECS[k])} · ${area.toFixed(1)} m² × ${PRICE[k]} €`, area * PRICE[k]]);
   const total = Math.round(lines.reduce((sum, [, p]) => sum + p, 0)), vat = Math.round(total * VAT);
   $('price').innerHTML = lines.map(([n, p]) => `<tr><td>${n}</td><td>${eur(p)}</td></tr>`).join('')
     + `<tr class="total"><td>${tr('Total fără TVA')}</td><td>${eur(total)}</td></tr>`
@@ -1417,6 +1439,7 @@ function renderFixtures() {
     return li;
   }));
   $('fixNote').textContent = '';
+  render(); // fixture count changes the price
 }
 
 // Drag in interior view: equipment slides on the floor, wall fixtures slide on their wall
