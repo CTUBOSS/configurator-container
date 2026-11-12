@@ -955,6 +955,14 @@ $('fixForm').onsubmit = e => {
   const it = { type, wall: side, x: 0, y: f.y, w: num('fxW'), h: num('fxH'), ...(type === 'rack' && { d: num('fxD') }), ...(type === 'gland' && { n: num('fxN') }) };
   const [L, W] = footprint(), span = Math.round((side === 'front' || side === 'back' ? L : W) * 1000 - 200);
   it.x = Math.round((span - it.w) / 20) * 10; // starts centered on the wall; the user drags it into place
+  // A similar element (same type, same wall) starts beside the others: centers at least 1.2 × the widths apart,
+  // trying center, then right, left, further right... If the wall is full it stays centered.
+  const others = state.fixtures.filter(o => o.type === type && o.wall === side), step = Math.ceil(it.w * 1.2 / 10) * 10, center = it.x;
+  const clear = x => others.every(o => Math.abs(o.x + o.w / 2 - (x + it.w / 2)) >= 0.6 * (o.w + it.w));
+  for (let k = 0; k <= 2 * Math.ceil(span / step); k++) {
+    const x = center + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * step;
+    if (x >= 0 && x + it.w <= span && clear(x)) { it.x = x; break; }
+  }
   const roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
   const deep = Math.round((side === 'front' || side === 'back' ? W : L) * 1000 - 200);
   if (it.x + it.w > span || it.y + it.h > roomH || (it.d || 0) > deep) {
