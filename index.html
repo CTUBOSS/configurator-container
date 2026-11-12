@@ -67,6 +67,9 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .chips b { width: 100%; font-size: 12px; font-weight: 600; color: #6b7680; }
   .chips span { padding: 4px 8px; border-radius: 999px; background: #e8f0fe; color: #1f4fb0; font-size: 12px; }
+  /* Length slider labels: each label is centered on its stop; side padding matches the thumb inset. */
+  .ticks { display: flex; justify-content: space-between; padding: 0 8px; margin-top: 2px; font-size: 11px; color: #6b7680; }
+  .ticks span { display: flex; justify-content: center; width: 0; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -80,8 +83,10 @@
 <aside>
   <h1>Configurator container DUALMAN</h1>
   <p class="dims" id="dims"></p>
-  <h2>Lungime</h2>
-  <div class="opts" id="lengths"></div>
+  <h2>Lungime <span id="lengthVal"></span></h2>
+  <input type="range" id="lengthRange" min="0" step="1" list="lengthTicks" aria-label="Lungime">
+  <datalist id="lengthTicks"></datalist>
+  <div class="ticks" id="lengthLabels" aria-hidden="true"></div>
   <h2>Lățime</h2>
   <div class="opts" id="widths"></div>
   <h2>Înălțime</h2>
@@ -608,7 +613,8 @@ function render() {
   const { l, w } = dims(), win = WINDOWS[state.winType], n = state.modules, [L, W] = footprint();
   $('dims').textContent = `${state.length} × ${state.width} × ${state.height} mm exterior · ${(l * w).toFixed(1)} m²`
     + (n > 1 ? ` · ${n} module: ${L.toFixed(2)} × ${W.toFixed(2)} m, ${(L * W).toFixed(1)} m²` : '');
-  choice('lengths', LENGTHS.map(v => [v, `${v / 1000} m`]), state.length, 'length');
+  $('lengthRange').value = LENGTHS.indexOf(state.length);
+  $('lengthVal').textContent = `${state.length / 1000} m`;
   choice('widths', WIDTHS.map(v => [v, `${v} mm`]), state.width, 'width');
   choice('heights', Object.entries(HEIGHTS).map(([k, v]) => [+k, v]), state.height, 'height');
   choice('envs', Object.entries(ENVS), state.env, 'env', null, ENV_ICONS);
@@ -647,6 +653,11 @@ function render() {
     + `<tr class="total"><td>Total cu TVA</td><td>${eur(total + vat)}</td></tr>`;
 }
 
+// Length slider: one stop per available length (index-based, so uneven lists still space evenly).
+$('lengthRange').max = LENGTHS.length - 1;
+$('lengthTicks').replaceChildren(...LENGTHS.map((_, i) => Object.assign(document.createElement('option'), { value: i })));
+$('lengthLabels').replaceChildren(...LENGTHS.map(v => Object.assign(document.createElement('span'), { textContent: v / 1000 })));
+$('lengthRange').oninput = e => set({ length: LENGTHS[+e.target.value] });
 $('less').onclick = () => set({ windows: state.windows - 1 });
 $('more').onclick = () => set({ windows: state.windows + 1 });
 
