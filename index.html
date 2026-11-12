@@ -82,6 +82,8 @@
     gap: 8px; padding: 6px 6px 6px 12px; border-radius: 10px; background: rgba(255,255,255,.92); box-shadow: 0 2px 10px rgba(0,0,0,.12); font-size: 13px; }
   .sel-info[hidden] { display: none; }
   .sel-info button { min-height: 0; padding: 4px 10px; border-color: #e5a29b; color: #b3261e; }
+  .snap { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer; }
+  .snap input { flex: none; width: 18px; height: 18px; margin: 0; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -147,6 +149,7 @@
     <select id="fxN" aria-label="Număr presetupe" hidden disabled></select>
     <button type="submit">Adaugă pe perete</button>
   </form>
+  <label class="snap"><input type="checkbox" id="snapSockets" checked> Snap: aliniază prizele pe verticală</label>
   <p class="hint" id="fxHint" hidden></p>
   <p class="hint">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.</p>
   <ul id="fixList" class="equip-list"></ul>
@@ -1085,6 +1088,17 @@ renderer.domElement.addEventListener('pointerdown', e => {
   }
   controls.enabled = false;
 });
+// Dashed vertical guide on the wall (frame g, local x) while a socket is snapped under another one.
+let guide = null;
+function showGuide(g, x, floor, roomH) {
+  if (guide) { guide.parent?.remove(guide); guide.geometry.dispose(); guide.material.dispose(); guide = null; }
+  if (x === null) return;
+  guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, floor, -0.1), new THREE.Vector3(x, floor + roomH, -0.1)]),
+    new THREE.LineDashedMaterial({ color: 0x1f6feb, dashSize: 0.05, gapSize: 0.03, depthTest: false }));
+  guide.computeLineDistances();
+  guide.renderOrder = 10;
+  g.add(guide);
+}
 renderer.domElement.addEventListener('pointermove', e => {
   if (!drag) return;
   pointerRay(e);
@@ -1103,11 +1117,17 @@ renderer.domElement.addEventListener('pointermove', e => {
   const y = Math.max(floor + fh / 2, Math.min(floor + roomH - fh / 2, local.y + drag.dy));
   it.x = Math.round((span / 2 - x - fw / 2) * 100) * 10; // mm, in 10 mm steps
   it.y = Math.round((y - floor - fh / 2) * 100) * 10;
+  // Snap: a socket whose center is within 40 mm of another socket's center line on the same wall lines up under it.
+  const snapX = $('snapSockets').checked && it.type === 'socket'
+    ? state.fixtures.filter(o => o !== it && o.type === 'socket' && o.wall === it.wall).map(o => o.x + o.w / 2).find(c => Math.abs(c - (it.x + it.w / 2)) <= 40)
+    : undefined;
+  if (snapX !== undefined) it.x = snapX - it.w / 2;
+  showGuide(g, snapX === undefined ? null : span / 2 - snapX / 1000, floor, roomH);
   fg.position.set(span / 2 - it.x / 1000 - fw / 2, floor + it.y / 1000 + fh / 2, 0);
-  showTip(e, `X ${it.x} mm · Y ${it.y} mm`);
+  showTip(e, `X ${it.x} mm · Y ${it.y} mm${snapX === undefined ? '' : ' · aliniat'}`);
 });
 renderer.domElement.addEventListener('pointerup', () => {
-  if (drag?.fix) { renderFixtures(); $('dragTip').hidden = true; }
+  if (drag?.fix) { renderFixtures(); $('dragTip').hidden = true; showGuide(null, null); }
   drag = null;
   controls.enabled = true;
 });
