@@ -74,6 +74,8 @@
     font: inherit; font-size: 16px; background: #fff; color: inherit; }
   .equip input:disabled { background: #f1f3f5; color: #8a939b; }
   .hint { margin: 6px 0 0; font-size: 12px; color: #6b7680; }
+  .drag-tip { position: absolute; z-index: 3; transform: translate(14px, -30px); padding: 4px 8px; border-radius: 6px;
+    background: rgba(29,35,41,.88); color: #fff; font-size: 12px; white-space: nowrap; pointer-events: none; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -83,7 +85,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
   <h1>Configurator container DUALMAN</h1>
   <p class="dims" id="dims"></p>
@@ -139,7 +141,7 @@
     <input id="fxH" type="number" min="20" max="2800" step="10" required placeholder="înălțime" aria-label="Înălțime (mm)">
     <button type="submit">Adaugă pe perete</button>
   </form>
-  <p class="hint">X: de la colțul din stânga, privit din interior. Y: de la podea la marginea de jos. Dimensiuni în mm.</p>
+  <p class="hint">Alegerea peretelui rotește vederea spre el. X: de la colțul din stânga, privit din interior. Y: de la podea la marginea de jos. Dimensiuni în mm. Poți și trage elementul direct pe perete.</p>
   <ul id="fixList" class="equip-list"></ul>
   <p class="note" id="fixNote"></p>
   <h2>Cuplare module</h2>
@@ -273,7 +275,7 @@ scene.add(ground);
 
 let group = new THREE.Group();
 // Door leaves (hinge pivots) from the last build; the animation loop swings them toward doorOpen.
-let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false, interiorView = false, equipMeshes = [], cutWalls = [], cutFaces = [];
+let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false, interiorView = false, equipMeshes = [], cutWalls = [], cutFaces = [], fixtureMeshes = [];
 function box(w, h, d, mat, x, y, z, parent = group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -293,6 +295,7 @@ function build() {
   scene.remove(group);
   doorLeaves = [];
   cutFaces = [];
+  fixtureMeshes = [];
   group.traverse(o => { if (o.geometry) { o.geometry.dispose(); [].concat(o.material).forEach(mat => mat.dispose()); } });
   group = new THREE.Group();
   const { l, w, h } = dims();
@@ -396,7 +399,9 @@ function build() {
   for (const it of state.fixtures) {
     const [fx, fz, rot, len] = frames[it.wall], span = len - 0.2, fw = it.w / 1000, fh = it.h / 1000;
     const X = Math.max(0, Math.min(it.x / 1000, span - fw)); // stays on the wall if the container shrinks
-    fixtureAt(it.type, wall(fx, fz, rot), span / 2 - X - fw / 2, POST + 0.005 + it.y / 1000 + fh / 2, fw, fh, m);
+    const g = wall(fx, fz, rot), fg = fixtureAt(it.type, g, fw, fh, m);
+    fg.position.set(span / 2 - X - fw / 2, POST + 0.005 + it.y / 1000 + fh / 2, 0);
+    for (const mesh of fg.userData.inner) { mesh.userData.fix = { it, g, fg, span, fw, fh }; fixtureMeshes.push(mesh); }
   }
   if (state.doorPos === 'end') {
     const [x, z] = moduleAt(state.modules - 1);
@@ -438,33 +443,37 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
   if (top) box(0.124, 0.004, 0.063, m.hole, x, y + C.y / 2, z);
 }
 
-// One wall fixture in its wall frame g (x along the wall, +z outward, inner face at z -0.09).
-// Inner parts hide with their wall in the interior cut-away; cut-outs and glands also show outside.
-function fixtureAt(type, g, x, y, w, h, m) {
-  const zi = -0.09, inner = [];
+// One wall fixture, built around its own origin in a group inside wall frame g
+// (x along the wall, +z outward, inner face at z -0.09). Inner parts hide with their wall
+// in the interior cut-away; cut-outs and glands also show outside. Returns the group.
+function fixtureAt(type, g, w, h, m) {
+  const fg = new THREE.Group(), zi = -0.09, inner = [];
+  g.add(fg);
   if (type === 'socket') {
-    inner.push(box(w, h, 0.012, m.fixWhite, x, y, zi - 0.006, g));
-    for (const s of [-1, 1]) inner.push(box(0.01, 0.01, 0.004, m.fixDark, x + s * 0.014, y, zi - 0.013, g));
+    inner.push(box(w, h, 0.012, m.fixWhite, 0, 0, zi - 0.006, fg));
+    for (const s of [-1, 1]) inner.push(box(0.01, 0.01, 0.004, m.fixDark, s * 0.014, 0, zi - 0.013, fg));
   } else if (type === 'rack') {
     const d = FIXTURES.rack.depth / 1000;
-    inner.push(box(w, h, d, m.fixRack, x, y, zi - d / 2, g), box(w - 0.06, h - 0.06, 0.004, m.fixDark, x, y, zi - d - 0.002, g));
+    inner.push(box(w, h, d, m.fixRack, 0, 0, zi - d / 2, fg), box(w - 0.06, h - 0.06, 0.004, m.fixDark, 0, 0, zi - d - 0.002, fg));
   } else if (type === 'hole') {
-    inner.push(box(w, h, 0.004, m.fixHole, x, y, zi - 0.002, g));
-    box(w, h, 0.004, m.void, x, y, 0.012, g);
+    inner.push(box(w, h, 0.004, m.fixHole, 0, 0, zi - 0.002, fg));
+    box(w, h, 0.004, m.void, 0, 0, 0.012, fg);
     for (const [sx, sy, bw, bh] of [[0, 1, w + 0.08, 0.04], [0, -1, w + 0.08, 0.04], [1, 0, 0.04, h], [-1, 0, 0.04, h]]) {
-      inner.push(box(bw, bh, 0.012, m.fixWhite, x + sx * (w / 2 + 0.02), y + sy * (h / 2 + 0.02), zi - 0.006, g));
-      box(bw, bh, 0.02, m.trim, x + sx * (w / 2 + 0.02), y + sy * (h / 2 + 0.02), 0.012, g);
+      inner.push(box(bw, bh, 0.012, m.fixWhite, sx * (w / 2 + 0.02), sy * (h / 2 + 0.02), zi - 0.006, fg));
+      box(bw, bh, 0.02, m.trim, sx * (w / 2 + 0.02), sy * (h / 2 + 0.02), 0.012, fg);
     }
   } else { // cable gland: a short tube on each face of the wall
     for (const [z, mat] of [[zi - 0.02, m.fixDark], [0.02, m.void]]) {
       const tube = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, 0.04, 16), mat);
       tube.rotation.x = Math.PI / 2;
-      tube.position.set(x, y, z);
-      g.add(tube);
+      tube.position.z = z;
+      fg.add(tube);
       if (mat === m.fixDark) inner.push(tube);
     }
   }
   for (const mesh of inner) cutFaces.push([mesh, g]);
+  fg.userData.inner = inner;
+  return fg;
 }
 
 function doorAt(g, x, m) {
@@ -796,6 +805,17 @@ function updateCutaway() {
     mesh.visible = toCam.subVectors(camera.position, g.position).dot(faceN) <= 0;
   }
 }
+// Interior view with the camera square to a wall's inner face (used when picking a wall for fixtures).
+let camGoal = null;
+function focusWall(side) {
+  if (!interiorView) toggleInterior(true);
+  const [L, W] = footprint(), h = dims().h, [nx, nz] = { front: [0, 1], back: [0, -1], right: [1, 0], left: [-1, 0] }[side];
+  const span = nx ? W : L, face = (nx ? L : W) / 2 - 0.1, vHalf = THREE.MathUtils.degToRad(camera.fov / 2);
+  const d = Math.max(span / 2 * 1.15 / (Math.tan(vHalf) * camera.aspect), h * 0.65 / Math.tan(vHalf));
+  const target = new THREE.Vector3(nx * face, POST + h / 2, nz * face);
+  camGoal = { target, pos: target.clone().add(new THREE.Vector3(-nx * d, 0.4, -nz * d)) };
+}
+controls.addEventListener('start', () => { camGoal = null; }); // the user takes over the camera
 function toggleInterior(on = !interiorView) {
   interiorView = on;
   $('hudInterior').className = on ? 'on' : '';
@@ -855,6 +875,7 @@ function fixtureDefaults() {
   $('fxW').disabled = $('fxH').disabled = !!f.fixed;
 }
 $('fxType').onchange = fixtureDefaults;
+$('fxWall').onchange = () => focusWall($('fxWall').value);
 fixtureDefaults();
 $('fxX').value = 500;
 $('fixForm').onsubmit = e => {
@@ -870,7 +891,7 @@ $('fixForm').onsubmit = e => {
   state.fixtures.push(it);
   build();
   renderFixtures();
-  toggleInterior(true);
+  focusWall(side);
 };
 function renderFixtures() {
   $('fixList').replaceChildren(...state.fixtures.map((it, i) => {
@@ -886,34 +907,66 @@ function renderFixtures() {
   $('fixNote').textContent = '';
 }
 
-// Drag equipment across the floor in interior view; the camera holds still while dragging.
-const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
+// Drag in interior view: equipment slides on the floor, wall fixtures slide on their wall
+// (with a live X / Y tooltip). The camera holds still while dragging.
+const dragPlane = new THREE.Plane(), hit = new THREE.Vector3(), local = new THREE.Vector3();
 let drag = null;
 function pointerRay(e) {
   const r = renderer.domElement.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
 }
+function showTip(e, text) {
+  const r = view.getBoundingClientRect(), tip = $('dragTip');
+  tip.textContent = text;
+  tip.style.left = `${e.clientX - r.left}px`;
+  tip.style.top = `${e.clientY - r.top}px`;
+  tip.hidden = false;
+}
 renderer.domElement.addEventListener('pointerdown', e => {
   if (!interiorView) return;
   pointerRay(e);
-  const mesh = ray.intersectObjects(equipMeshes, false)[0]?.object;
+  // Raycasts ignore visibility, so skip fixtures hidden on cut-away walls.
+  const mesh = ray.intersectObjects([...equipMeshes, ...fixtureMeshes], false).find(h => h.object.visible)?.object;
   if (!mesh) return;
-  floorPlane.constant = -mesh.position.y;
-  ray.ray.intersectPlane(floorPlane, hit);
-  drag = { mesh, dx: mesh.position.x - hit.x, dz: mesh.position.z - hit.z };
+  if (mesh.userData.item) {
+    dragPlane.set(new THREE.Vector3(0, 1, 0), -mesh.position.y);
+    ray.ray.intersectPlane(dragPlane, hit);
+    drag = { mesh, dx: mesh.position.x - hit.x, dz: mesh.position.z - hit.z };
+  } else {
+    const f = mesh.userData.fix;
+    dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(Math.sin(f.g.rotation.y), 0, Math.cos(f.g.rotation.y)), f.g.localToWorld(local.set(0, 0, -0.09)));
+    ray.ray.intersectPlane(dragPlane, hit);
+    f.g.worldToLocal(local.copy(hit));
+    drag = { fix: f, dx: f.fg.position.x - local.x, dy: f.fg.position.y - local.y };
+  }
   controls.enabled = false;
 });
 renderer.domElement.addEventListener('pointermove', e => {
   if (!drag) return;
   pointerRay(e);
-  if (!ray.ray.intersectPlane(floorPlane, hit)) return;
-  const it = drag.mesh.userData.item;
-  it.x = hit.x + drag.dx;
-  it.z = hit.z + drag.dz;
-  clampItem(it);
-  drag.mesh.position.set(it.x, drag.mesh.position.y, it.z);
+  if (!ray.ray.intersectPlane(dragPlane, hit)) return;
+  if (drag.mesh) {
+    const it = drag.mesh.userData.item;
+    it.x = hit.x + drag.dx;
+    it.z = hit.z + drag.dz;
+    clampItem(it);
+    drag.mesh.position.set(it.x, drag.mesh.position.y, it.z);
+    return;
+  }
+  const { it, g, fg, span, fw, fh } = drag.fix, floor = POST + 0.005, roomH = dims().h - 2 * POST - 0.05;
+  g.worldToLocal(local.copy(hit));
+  const x = Math.max(-span / 2 + fw / 2, Math.min(span / 2 - fw / 2, local.x + drag.dx));
+  const y = Math.max(floor + fh / 2, Math.min(floor + roomH - fh / 2, local.y + drag.dy));
+  it.x = Math.round((span / 2 - x - fw / 2) * 100) * 10; // mm, in 10 mm steps
+  it.y = Math.round((y - floor - fh / 2) * 100) * 10;
+  fg.position.set(span / 2 - it.x / 1000 - fw / 2, floor + it.y / 1000 + fh / 2, 0);
+  showTip(e, `X ${it.x} mm · Y ${it.y} mm`);
 });
-renderer.domElement.addEventListener('pointerup', () => { drag = null; controls.enabled = true; });
+renderer.domElement.addEventListener('pointerup', () => {
+  if (drag?.fix) { renderFixtures(); $('dragTip').hidden = true; }
+  drag = null;
+  controls.enabled = true;
+});
 
 // Wall section card: a plan cut through the chosen build-up, exterior on the left, 2 px per mm.
 const SECTION_DEFS = '<defs>'
@@ -972,6 +1025,11 @@ renderer.setAnimationLoop(() => {
   doorAngle += ((doorOpen ? DOOR.open : 0) - doorAngle) * 0.12;
   for (const leaf of doorLeaves) leaf.rotation.y = -doorAngle;
   if (interiorView) updateCutaway();
+  if (camGoal) { // ease toward the wall view picked in focusWall()
+    camera.position.lerp(camGoal.pos, 0.12);
+    controls.target.lerp(camGoal.target, 0.12);
+    if (camera.position.distanceTo(camGoal.pos) < 0.01) camGoal = null;
+  }
   controls.update();
   renderer.render(scene, camera);
 });
