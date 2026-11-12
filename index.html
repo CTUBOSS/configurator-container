@@ -783,7 +783,7 @@ const NEUTRAL = { sky: 0xdfe5ea, ground: 0xc9d1d6 };
 const MONO = { sky: 0xf5f6f7, ground: 0xeef0f2, fill: 0xf8f9fa, line: 0x5f666d, grid: 0xd5d9dd };
 const NIGHT = { sky: 0x0b1220, ground: 0x1a2129, fill: 0x141b26, line: 0x4a5a70, grid: 0x222b36 }; // night: sky, ground and scenery
 let night = false;
-let turbineSpins = []; // wind turbine rotors, turned in the animation loop
+let envAnims = []; // per-frame scenery animations (turbine rotors, crane, excavator, solar trackers, anemometer)
 let envGroup = new THREE.Group();
 // Deterministic PRNG so scenery stays put between rebuilds.
 const seeded = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -792,7 +792,7 @@ function buildEnv() {
   scene.remove(envGroup);
   envGroup.traverse(o => { if (o.geometry) { o.geometry.dispose(); o.material.dispose(); } });
   envGroup = new THREE.Group();
-  turbineSpins = [];
+  envAnims = [];
   const mono = state.env !== 'neutral', pal = night ? NIGHT : MONO;
   scene.background.set(night ? NIGHT.sky : mono ? MONO.sky : NEUTRAL.sky);
   ground.material.color.set(night ? NIGHT.ground : mono ? MONO.ground : NEUTRAL.ground);
@@ -903,7 +903,7 @@ function buildEnv() {
       blade.rotation.z = k * 2 * Math.PI / 3;
       spin.add(blade);
     }
-    turbineSpins.push(spin);
+    envAnims.push(() => { spin.rotation.z += 0.006; });
   };
 
   if (state.env === 'nature') {
@@ -935,21 +935,88 @@ function buildEnv() {
       for (let f = 1; f < floors; f++) add(new THREE.BoxGeometry(14.1, 0.25, 12.1), x, z, f * 3);
       for (let c = -4; c <= 4; c++) add(new THREE.BoxGeometry(0.2, h, 0.05), x + c * 1.4, z + 6.03, h / 2); // facade piers
     }
-    add(new THREE.BoxGeometry(1, 32, 1, 2, 32, 2), 12, zr - 13, 16, true); // tower crane
-    add(new THREE.BoxGeometry(26, 0.8, 0.8, 52, 2, 2), 6, zr - 13, 32, true);
+    // Site fence, scaffolding on the middle block, portable toilet.
+    for (let x = -36; x <= 36; x += 3.5) add(new THREE.BoxGeometry(3.4, 2, 0.05, 6, 4, 1), x, zr + 5.2, 1, true);
+    add(new THREE.BoxGeometry(14, 30, 1.2, 7, 15, 1), 0, zr - 24 + 6.7, 15, true);
+    add(new THREE.BoxGeometry(1.2, 2.3, 1.2), -14, zr + 8, 1.15);
+    // Child part of a moving group: built at the origin, then placed in the group's frame.
+    const part = (parent, geo, x, y, z, wire = false) => { const p = add(geo, 0, 0, 0, wire); p.position.set(x, y, z); parent.add(p); return p; };
+    // Tower crane: lattice mast; jib, counter-jib, counterweight and cab slew together, the trolley runs out and the hook dips.
+    const slew = new THREE.Group();
+    add(new THREE.BoxGeometry(1.6, 32, 1.6, 2, 32, 2), 12, zr - 13, 16, true);
+    slew.position.set(12, 32, zr - 13);
+    envGroup.add(slew);
+    part(slew, new THREE.BoxGeometry(32, 1.2, 1.2, 64, 2, 2), 12, 1.4, 0, true);
+    part(slew, new THREE.BoxGeometry(10, 1.2, 1.2, 20, 2, 2), -9, 1.4, 0, true);
+    part(slew, new THREE.BoxGeometry(3, 2.4, 1.8), -12, 0.6, 0);
+    part(slew, new THREE.BoxGeometry(1.8, 1.8, 1.8), 0, 0, 1.6);
+    part(slew, new THREE.ConeGeometry(0.9, 6, 4, 2), 0, 4.6, 0, true);
+    const trolley = part(slew, new THREE.BoxGeometry(1.2, 0.5, 1.2), 10, 0.5, 0);
+    const cable = part(slew, new THREE.CylinderGeometry(0.03, 0.03, 1, 4), 10, 0, 0);
+    const hook = part(slew, new THREE.BoxGeometry(0.8, 0.8, 0.8), 10, -10, 0);
+    envAnims.push(t => {
+      const reach = 14 + 9 * Math.sin(t * 0.35), drop = 12 + 6 * Math.sin(t * 0.5);
+      slew.rotation.y = t * 0.12;
+      trolley.position.x = cable.position.x = hook.position.x = reach;
+      hook.position.y = -drop;
+      cable.scale.y = drop;
+      cable.position.y = -drop / 2;
+    });
+    // Excavator by the gravel: tracks, a house that swings, and a boom / stick / bucket that dig in a loop.
+    const house = new THREE.Group(), boom = new THREE.Group(), stick = new THREE.Group();
+    for (const s of [-1, 1]) add(new THREE.BoxGeometry(4, 0.9, 0.8, 8, 1, 1), 22, zr - 9 + s * 1.2, 0.45, true);
+    house.position.set(22, 0.9, zr - 9);
+    envGroup.add(house);
+    part(house, new THREE.BoxGeometry(3, 1.2, 2.4), -0.3, 0.6, 0);
+    part(house, new THREE.BoxGeometry(1.2, 1.4, 1), 0.6, 1.8, 0.6);
+    boom.position.set(1, 1, -0.4);
+    house.add(boom);
+    part(boom, new THREE.BoxGeometry(3.6, 0.4, 0.4).translate(1.8, 0, 0), 0, 0, 0);
+    stick.position.x = 3.6;
+    boom.add(stick);
+    part(stick, new THREE.BoxGeometry(2.4, 0.3, 0.3).translate(1.2, 0, 0), 0, 0, 0);
+    const bucket = part(stick, new THREE.BoxGeometry(0.7, 0.6, 0.8), 2.5, -0.2, 0);
+    envAnims.push(t => {
+      const k = Math.sin(t * 0.8);
+      house.rotation.y = 0.6 * Math.sin(t * 0.25);
+      boom.rotation.z = 0.35 + 0.25 * k;
+      stick.rotation.z = -1.2 - 0.4 * k;
+      bucket.rotation.z = -0.6 * k;
+    });
   } else if (state.env === 'solar') {
     // Shared cell grid drawn on top of every panel (12 x 6 cells).
     const pts = [];
     for (let i = 0; i <= 12; i++) pts.push(new THREE.Vector3(-2.1 + i * 0.35, 0.031, -1.1), new THREE.Vector3(-2.1 + i * 0.35, 0.031, 1.1));
     for (let j = 0; j <= 6; j++) pts.push(new THREE.Vector3(-2.1, 0.031, -1.1 + j * 2.2 / 6), new THREE.Vector3(2.1, 0.031, -1.1 + j * 2.2 / 6));
     const cells = new THREE.BufferGeometry().setFromPoints(pts);
-    for (let row = 0; row < 4; row++) for (let x = -32; x <= 32; x += 4.4) {
-      const z = -(clear + 3 + row * 6);
+    // Single-axis trackers: every panel row tilts together, following the sun.
+    const trackers = [];
+    for (let row = 0; row < 6; row++) for (let x = -32; x <= 32; x += 4.4) {
+      const z = -(clear + 4 + row * 6);
       add(new THREE.BoxGeometry(0.1, 1.2, 0.1), x, z, 0.6);
       const panel = add(new THREE.BoxGeometry(4.2, 0.06, 2.2), x, z, 1.35);
-      panel.rotation.x = 0.45;
       panel.add(new THREE.LineSegments(cells, line));
+      trackers.push(panel);
     }
+    envAnims.push(t => { const tilt = 0.55 * Math.sin(t * 0.15); for (const p of trackers) p.rotation.x = tilt; });
+    // Perimeter fence, inverter stations and a transformer.
+    for (let x = -40; x <= 40; x += 4) add(new THREE.BoxGeometry(0.08, 2, 0.08), x, -(clear + 1.5), 1);
+    for (const y of [0.6, 1.9]) add(new THREE.BoxGeometry(80, 0.03, 0.03), 0, -(clear + 1.5), y);
+    for (const z of [-(clear + 12), -(clear + 26)]) add(new THREE.BoxGeometry(6, 2.6, 2.4, 6, 2, 2), -42, z, 1.3, true);
+    add(new THREE.BoxGeometry(2.4, 2.2, 1.8), -42, -(clear + 19), 1.1);
+    // Weather mast with a spinning cup anemometer.
+    add(new THREE.CylinderGeometry(0.06, 0.08, 8, 8), 40, -(clear + 8), 4);
+    const cups = new THREE.Group();
+    cups.position.set(40, 8.1, -(clear + 8));
+    envGroup.add(cups);
+    for (let k = 0; k < 3; k++) {
+      const a = k * 2 * Math.PI / 3, arm = add(new THREE.BoxGeometry(0.6, 0.02, 0.02), 0, 0, 0), cup = add(new THREE.SphereGeometry(0.08, 8, 6), 0, 0, 0);
+      arm.position.set(0.3 * Math.cos(a), 0, 0.3 * Math.sin(a));
+      arm.rotation.y = -a;
+      cup.position.set(0.6 * Math.cos(a), 0, 0.6 * Math.sin(a));
+      cups.add(arm, cup);
+    }
+    envAnims.push(() => { cups.rotation.y += 0.15; });
   }
   scene.add(envGroup);
 }
@@ -1527,7 +1594,8 @@ renderer.setAnimationLoop(() => {
   for (const leaf of doorLeaves) leaf.rotation.y = -doorAngle;
   if (interiorView) updateCutaway();
   if (selBox) selBox.update(); // follows a dragged selection
-  for (const rotor of turbineSpins) rotor.rotation.z += 0.006;
+  const now = performance.now() / 1000;
+  for (const step of envAnims) step(now);
   if (camGoal) { // ease toward the wall view picked in focusWall()
     camera.position.lerp(camGoal.pos, 0.12);
     controls.target.lerp(camGoal.target, 0.12);
