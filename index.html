@@ -135,8 +135,6 @@
   <form id="fixForm" class="equip">
     <select id="fxType" aria-label="Tip element"></select>
     <select id="fxWall" aria-label="Perete"></select>
-    <input id="fxX" type="number" min="0" max="12000" step="10" required placeholder="X mm" aria-label="Distanța de la colțul stâng (mm)">
-    <input id="fxY" type="number" min="0" max="2800" step="10" required placeholder="Y mm" aria-label="Înălțimea de la podea (mm)">
     <input id="fxW" type="number" min="20" max="3000" step="10" required placeholder="lățime" aria-label="Lățime (mm)">
     <input id="fxH" type="number" min="20" max="2800" step="10" required placeholder="înălțime" aria-label="Înălțime (mm)">
     <input id="fxD" type="number" min="200" max="3000" step="10" required placeholder="adâncime" aria-label="Adâncime de la perete (mm)" hidden>
@@ -144,7 +142,7 @@
     <button type="submit">Adaugă pe perete</button>
   </form>
   <p class="hint" id="fxHint" hidden></p>
-  <p class="hint">Alegerea peretelui rotește vederea spre el. X: de la colțul din stânga, privit din interior. Y: de la podea la marginea de jos. Dimensiuni în mm. Poți și trage elementul direct pe perete.</p>
+  <p class="hint">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.</p>
   <ul id="fixList" class="equip-list"></ul>
   <p class="note" id="fixNote"></p>
   <h2>Cuplare module</h2>
@@ -939,7 +937,6 @@ function fixtureDefaults() {
   const type = $('fxType').value, f = FIXTURES[type];
   $('fxW').value = f.w;
   $('fxH').value = f.h;
-  $('fxY').value = f.y;
   $('fxW').disabled = $('fxH').disabled = !!f.fixed;
   $('fxD').value = f.d || '';
   $('fxD').disabled = $('fxD').hidden = type !== 'rack'; // depth only for racks
@@ -952,12 +949,12 @@ $('fxN').onchange = glandSize;
 $('fxType').onchange = fixtureDefaults;
 $('fxWall').onchange = () => focusWall($('fxWall').value);
 fixtureDefaults();
-$('fxX').value = 500;
 $('fixForm').onsubmit = e => {
   e.preventDefault();
   const type = $('fxType').value, f = FIXTURES[type], side = $('fxWall').value, num = id => Math.round(+$(id).value);
-  const it = { type, wall: side, x: num('fxX'), y: num('fxY'), w: num('fxW'), h: num('fxH'), ...(type === 'rack' && { d: num('fxD') }), ...(type === 'gland' && { n: num('fxN') }) };
+  const it = { type, wall: side, x: 0, y: f.y, w: num('fxW'), h: num('fxH'), ...(type === 'rack' && { d: num('fxD') }), ...(type === 'gland' && { n: num('fxN') }) };
   const [L, W] = footprint(), span = Math.round((side === 'front' || side === 'back' ? L : W) * 1000 - 200);
+  it.x = Math.round((span - it.w) / 20) * 10; // starts centered on the wall; the user drags it into place
   const roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
   const deep = Math.round((side === 'front' || side === 'back' ? W : L) * 1000 - 200);
   if (it.x + it.w > span || it.y + it.h > roomH || (it.d || 0) > deep) {
