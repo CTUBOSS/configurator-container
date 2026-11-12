@@ -131,10 +131,10 @@ const CANOPY = { w: DOOR.w + 0.2, d: 0.4 }; // door canopy: 20 cm wider than the
 const LAMP = { label: 'Lampă LED exterior', price: 85 };
 const EQUIP_COLORS = [0xe07a3f, 0x3f8fe0, 0x59a85c, 0xb05fc4, 0xd4b13a];
 // Scene units are meters; sill is measured from the floor.
+// 'none' keeps the standard size so the window stepper can switch straight back to it.
 const WINDOWS = {
+  none: { label: 'Fără ferestre', w: 0.9, h: 1.1, sill: 0.9, price: 0 },
   std: { label: 'Standard 900×1100', w: 0.9, h: 1.1, sill: 0.9, price: 380 },
-  tall: { label: 'Înaltă 900×2000', w: 0.9, h: 2.0, sill: 0.1, price: 620 },
-  glazed: { label: 'Suprafață vitrată 2000×2000', w: 2.0, h: 2.0, sill: 0.1, price: 1450 },
 };
 const POST = 0.15; // corner post / rail thickness
 // Stencil: the doorway mask marks its pixels 1; the facade skips them and the interior draws only there.
@@ -203,7 +203,7 @@ scene.add(ground);
 
 let group = new THREE.Group();
 // Door leaves (hinge pivots) from the last build; the animation loop swings them toward doorOpen.
-let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false, interiorView = false, equipMeshes = [];
+let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false, interiorView = false, equipMeshes = [], cutWalls = [], cutFaces = [];
 function box(w, h, d, mat, x, y, z, parent = group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -222,6 +222,7 @@ function layout(widths, inner) {
 function build() {
   scene.remove(group);
   doorLeaves = [];
+  cutFaces = [];
   group.traverse(o => { if (o.geometry) { o.geometry.dispose(); [].concat(o.material).forEach(mat => mat.dispose()); } });
   group = new THREE.Group();
   const { l, w, h } = dims();
@@ -244,6 +245,9 @@ function build() {
     innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.6, roughness: 0.1, ...INSIDE }),
     equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...INSIDE })),
     equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
+    cutWall: new THREE.MeshStandardMaterial({ color: 0xeeece7, roughness: 0.9 }),
+    cut: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.8 }),
+    cutDoor: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5 }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -281,7 +285,19 @@ function build() {
   const [L, W] = footprint(), rh = h - 2 * POST - 0.05;
   const room = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, rh, W - 0.2), [m.wall, m.wall, m.ceiling, m.floor, m.wall, m.wall]);
   room.position.y = POST + rh / 2 + 0.005; // floor 5 mm above the bottom rails so they don't z-fight
+  room.userData.wallMat = m.wall;
   group.add(room);
+  // Interior view only: 100 mm walls around the room with a dark cut cap on top.
+  const T = 0.1, Lr = L - 0.2, Wr = W - 0.2;
+  cutWalls = [[0, Wr / 2 + T / 2, 0, 1, Lr + 2 * T, T], [0, -Wr / 2 - T / 2, 0, -1, Lr + 2 * T, T],
+    [Lr / 2 + T / 2, 0, 1, 0, T, Wr], [-Lr / 2 - T / 2, 0, -1, 0, T, Wr]].map(([x, z, nx, nz, sx, sz]) => {
+    const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(sx, rh, sz).translate(0, rh / 2, 0), [m.cutWall, m.cutWall, m.cut, m.cutWall, m.cutWall, m.cutWall]);
+    wallMesh.position.set(x, POST + 0.005, z);
+    wallMesh.castShadow = wallMesh.receiveShadow = true;
+    wallMesh.userData = { cutaway: true, normal: new THREE.Vector3(nx, 0, nz) };
+    group.add(wallMesh);
+    return wallMesh;
+  });
   // User equipment: boxes on the floor, draggable in interior view.
   equipMeshes = state.equipment.map((it, i) => {
     clampItem(it);
@@ -346,8 +362,12 @@ function doorAt(g, x, m) {
   mask.renderOrder = -1; // must write the stencil before the facade draws
   g.add(mask);
   // Reveal through the wall thickness, then a ceiling light in the middle of the room (local -z is inward).
-  for (const sx of [-1, 1]) box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g);
-  box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g);
+  for (const sx of [-1, 1]) cutFaces.push([box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g), g]);
+  cutFaces.push([box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g), g]);
+  // The door as seen from inside, shown only in the interior view.
+  const insideFace = box(DOOR.w, DOOR.h, 0.012, m.cutDoor, x, y, -0.096, g);
+  insideFace.userData.cutaway = true;
+  cutFaces.push([insideFace, g]);
   const [L, W] = footprint(), fz = -((state.doorPos === 'side' ? W : L) - 0.11) / 2; // middle of the room depth
   box(0.6, 0.02, 0.6, m.ceilLight, x, dims().h - POST - 0.06, fz, g).userData.ceiling = true;
   if (lightsOn) {
@@ -392,12 +412,11 @@ function windowAt(g, x, m) {
   box(win.w, win.h, 0.06, m.glass, x, y, 0, g);
   const bars = Math.max(1, Math.round(win.w / 0.7) - 1);
   // Inner face of the window on the interior wall (local z -0.09), lit like daylight.
-  box(win.w + 0.1, win.h + 0.1, 0.01, m.inner, x, y, -0.096, g);
-  box(win.w, win.h, 0.012, m.innerGlass, x, y, -0.096, g);
+  cutFaces.push([box(win.w + 0.1, win.h + 0.1, 0.01, m.inner, x, y, -0.096, g), g], [box(win.w, win.h, 0.012, m.innerGlass, x, y, -0.096, g), g]);
   for (let i = 1; i <= bars; i++) {
     const bx = x - win.w / 2 + i * win.w / (bars + 1);
     box(0.04, win.h, 0.07, m.trim, bx, y, 0, g);
-    box(0.04, win.h, 0.014, m.inner, bx, y, -0.096, g);
+    cutFaces.push([box(0.04, win.h, 0.014, m.inner, bx, y, -0.096, g), g]);
   }
 }
 
@@ -537,9 +556,12 @@ function set(patch) {
   const resized = ['length', 'width', 'height', 'modules', 'couple'].some(k => k in patch && patch[k] !== state[k]);
   const envChanged = 'env' in patch && patch.env !== state.env;
   Object.assign(state, patch);
+  if (patch.winType === 'none') state.windows = 0;
+  else if (patch.winType === 'std' && !state.windows) state.windows = 2;
   const max = openingWalls().reduce((sum, s) => sum + s.cap, 0);
   $('note').textContent = state.windows > max ? `Maxim ${max} ferestre de acest tip pentru această configurație.` : '';
   state.windows = Math.max(0, Math.min(state.windows, max));
+  state.winType = state.windows ? 'std' : 'none'; // zero windows is the 'none' option
   build();
   if (resized) frameCamera();
   if (resized || envChanged) buildEnv();
@@ -567,7 +589,7 @@ function render() {
     ...(state.height === 2896 ? [[`High cube${n > 1 ? ' × ' + n : ''}`, n * PRICE.highCube]] : []),
     [DOORS[state.door].label, DOORS[state.door].price],
     ...(state.lamp ? [[LAMP.label, LAMP.price]] : []),
-    [`${win.label} × ${state.windows}`, win.price * state.windows],
+    ...(state.windows ? [[`${win.label} × ${state.windows}`, win.price * state.windows]] : []),
   ];
   const total = Math.round(lines.reduce((sum, [, p]) => sum + p, 0)), vat = Math.round(total * VAT);
   $('price').innerHTML = lines.map(([n, p]) => `<tr><td>${n}</td><td>${eur(p)}</td></tr>`).join('')
@@ -616,13 +638,24 @@ renderer.domElement.addEventListener('pointerup', e => {
 // Interior view: hide the exterior shell and draw the interior without the doorway stencil.
 function applyView() {
   group.traverse(o => {
+    if (o.userData.wallMat) o.userData.wallMat.visible = !interiorView; // thick cut walls replace them
     if (!o.geometry) return;
     const mats = [].concat(o.material);
     const inside = mats.some(mt => mt.stencilFunc === THREE.EqualStencilFunc);
     if (inside) mats.forEach(mt => { mt.stencilWrite = !interiorView; });
     // The ceiling is culled from above, so its light panel would float; hide it with the shell.
-    o.visible = !interiorView || (inside && !o.userData.ceiling);
+    o.visible = o.userData.cutaway ? interiorView : !interiorView || (inside && !o.userData.ceiling);
   });
+}
+// Each frame in interior view: walls whose outside faces the camera drop to a low curb
+// (cap still outlines the plan), and the window/door faces on them hide.
+const toCam = new THREE.Vector3(), faceN = new THREE.Vector3();
+function updateCutaway() {
+  for (const wall of cutWalls) wall.scale.y = toCam.subVectors(camera.position, wall.position).dot(wall.userData.normal) > 0 ? 0.08 : 1;
+  for (const [mesh, g] of cutFaces) {
+    faceN.set(Math.sin(g.rotation.y), 0, Math.cos(g.rotation.y));
+    mesh.visible = toCam.subVectors(camera.position, g.position).dot(faceN) <= 0;
+  }
 }
 function toggleInterior(on = !interiorView) {
   interiorView = on;
@@ -710,6 +743,7 @@ new ResizeObserver(() => {
 renderer.setAnimationLoop(() => {
   doorAngle += ((doorOpen ? DOOR.open : 0) - doorAngle) * 0.12;
   for (const leaf of doorLeaves) leaf.rotation.y = -doorAngle;
+  if (interiorView) updateCutaway();
   controls.update();
   renderer.render(scene, camera);
 });
