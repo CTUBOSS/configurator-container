@@ -70,6 +70,10 @@
   /* Slider labels: each label is centered on its stop; side padding matches the thumb inset. */
   .ticks { display: flex; justify-content: space-between; padding: 0 8px; margin-top: 2px; font-size: 11px; color: #6b7680; }
   .ticks span { display: flex; justify-content: center; width: 0; }
+  .equip select { grid-column: span 2; min-width: 0; padding: 8px; border: 1px solid #cfd6dc; border-radius: 6px;
+    font: inherit; font-size: 16px; background: #fff; color: inherit; }
+  .equip input:disabled { background: #f1f3f5; color: #8a939b; }
+  .hint { margin: 6px 0 0; font-size: 12px; color: #6b7680; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -125,6 +129,19 @@
   </form>
   <ul id="equipList" class="equip-list"></ul>
   <p class="note" id="equipNote"></p>
+  <h2>Elemente pe pereți</h2>
+  <form id="fixForm" class="equip">
+    <select id="fxType" aria-label="Tip element"></select>
+    <select id="fxWall" aria-label="Perete"></select>
+    <input id="fxX" type="number" min="0" max="12000" step="10" required placeholder="X mm" aria-label="Distanța de la colțul stâng (mm)">
+    <input id="fxY" type="number" min="0" max="2800" step="10" required placeholder="Y mm" aria-label="Înălțimea de la podea (mm)">
+    <input id="fxW" type="number" min="20" max="3000" step="10" required placeholder="lățime" aria-label="Lățime (mm)">
+    <input id="fxH" type="number" min="20" max="2800" step="10" required placeholder="înălțime" aria-label="Înălțime (mm)">
+    <button type="submit">Adaugă pe perete</button>
+  </form>
+  <p class="hint">X: de la colțul din stânga, privit din interior. Y: de la podea la marginea de jos. Dimensiuni în mm.</p>
+  <ul id="fixList" class="equip-list"></ul>
+  <p class="note" id="fixNote"></p>
   <h2>Cuplare module</h2>
   <div class="opts" id="modules"></div>
   <div class="opts" id="couple" style="margin-top: 8px"></div>
@@ -187,11 +204,19 @@ const WALLS = {
 };
 // Product properties the buyer can tick; shown as a summary, they do not change the model.
 const SPECS = { fire: 'Rezistent la foc', thermal: 'Termoizolant', corrosion: 'Protecție anticorozivă C3' };
+// Wall fixtures, sizes in mm; y = floor to bottom edge. Fixed types keep their catalogue size.
+const FIXTURES = {
+  socket: { label: 'Priză', w: 80, h: 80, y: 300, fixed: true },
+  rack: { label: 'Rack de perete', w: 600, h: 640, y: 1200, depth: 450 },
+  hole: { label: 'Gol dreptunghiular (AC)', w: 800, h: 300, y: 1800 },
+  gland: { label: 'Presetupă', w: 50, h: 50, y: 200, fixed: true },
+};
+const WALL_SIDES = { front: 'Lateral față', back: 'Lateral spate', right: 'Capăt dreapta', left: 'Capăt stânga' };
 const wallMM = wall => wall.layers.reduce((sum, l) => sum + l[2], 0);
 const MODULES = [1, 2, 3, 4, 5, 6];
 const COUPLE = { width: 'Pe lățime', length: 'Pe lungime' };
 const state = { frame: 'RAL 9005 negru', modules: 1, couple: 'width', env: 'nature',
-  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'end', lamp: false, wall: 'sandwich', specs: [], equipment: [], winType: 'std', windows: 3 };
+  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'end', lamp: false, wall: 'sandwich', specs: [], equipment: [], fixtures: [], winType: 'std', windows: 3 };
 const dims = () => ({ l: state.length / 1000, w: state.width / 1000, h: state.height / 1000 });
 
 // Center [x, z] of module i in the coupled assembly (identical modules, centered on the origin).
@@ -293,6 +318,10 @@ function build() {
     cutWall: new THREE.MeshStandardMaterial({ color: 0xeeece7, roughness: 0.9 }),
     cut: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.8 }),
     cutDoor: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5 }),
+    fixWhite: new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.5, ...INSIDE }),
+    fixDark: new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.6, ...INSIDE }),
+    fixRack: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.5, metalness: 0.2, ...INSIDE }),
+    fixHole: new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 1, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
     // Apertures contrast with the casting: light grey on dark frames, near-black on mid/light ones.
     hole: new THREE.MeshBasicMaterial({ color: new THREE.Color(FRAMES[state.frame]).getHSL({}, THREE.SRGBColorSpace).l > 0.35 ? 0x0b0c0d : 0x8a8f94 }),
@@ -359,6 +388,16 @@ function build() {
     if (s.door) widths.splice(doorIndex, 0, DOOR.w);
     layout(widths, l - 2 * POST).forEach((x, i) => (i === doorIndex ? doorAt : windowAt)(g, x, m));
   }
+  // Wall fixtures, placed from the wall's left corner as seen from inside (local +x end).
+  const frames = {
+    front: [0, W / 2 - 0.01, 0, L], back: [0, 0.01 - W / 2, Math.PI, L],
+    right: [L / 2 - 0.01, 0, Math.PI / 2, W], left: [0.01 - L / 2, 0, -Math.PI / 2, W],
+  };
+  for (const it of state.fixtures) {
+    const [fx, fz, rot, len] = frames[it.wall], span = len - 0.2, fw = it.w / 1000, fh = it.h / 1000;
+    const X = Math.max(0, Math.min(it.x / 1000, span - fw)); // stays on the wall if the container shrinks
+    fixtureAt(it.type, wall(fx, fz, rot), span / 2 - X - fw / 2, POST + 0.005 + it.y / 1000 + fh / 2, fw, fh, m);
+  }
   if (state.doorPos === 'end') {
     const [x, z] = moduleAt(state.modules - 1);
     doorAt(wall(x + l / 2 - 0.01, z, Math.PI / 2), 0, m);
@@ -397,6 +436,35 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
   box(0.078, 0.051, 0.004, m.hole, x, y, z + sz * C.z / 2);
   box(0.004, 0.051, 0.064, m.hole, x + sx * C.x / 2, y, z);
   if (top) box(0.124, 0.004, 0.063, m.hole, x, y + C.y / 2, z);
+}
+
+// One wall fixture in its wall frame g (x along the wall, +z outward, inner face at z -0.09).
+// Inner parts hide with their wall in the interior cut-away; cut-outs and glands also show outside.
+function fixtureAt(type, g, x, y, w, h, m) {
+  const zi = -0.09, inner = [];
+  if (type === 'socket') {
+    inner.push(box(w, h, 0.012, m.fixWhite, x, y, zi - 0.006, g));
+    for (const s of [-1, 1]) inner.push(box(0.01, 0.01, 0.004, m.fixDark, x + s * 0.014, y, zi - 0.013, g));
+  } else if (type === 'rack') {
+    const d = FIXTURES.rack.depth / 1000;
+    inner.push(box(w, h, d, m.fixRack, x, y, zi - d / 2, g), box(w - 0.06, h - 0.06, 0.004, m.fixDark, x, y, zi - d - 0.002, g));
+  } else if (type === 'hole') {
+    inner.push(box(w, h, 0.004, m.fixHole, x, y, zi - 0.002, g));
+    box(w, h, 0.004, m.void, x, y, 0.012, g);
+    for (const [sx, sy, bw, bh] of [[0, 1, w + 0.08, 0.04], [0, -1, w + 0.08, 0.04], [1, 0, 0.04, h], [-1, 0, 0.04, h]]) {
+      inner.push(box(bw, bh, 0.012, m.fixWhite, x + sx * (w / 2 + 0.02), y + sy * (h / 2 + 0.02), zi - 0.006, g));
+      box(bw, bh, 0.02, m.trim, x + sx * (w / 2 + 0.02), y + sy * (h / 2 + 0.02), 0.012, g);
+    }
+  } else { // cable gland: a short tube on each face of the wall
+    for (const [z, mat] of [[zi - 0.02, m.fixDark], [0.02, m.void]]) {
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, 0.04, 16), mat);
+      tube.rotation.x = Math.PI / 2;
+      tube.position.set(x, y, z);
+      g.add(tube);
+      if (mat === m.fixDark) inner.push(tube);
+    }
+  }
+  for (const mesh of inner) cutFaces.push([mesh, g]);
 }
 
 function doorAt(g, x, m) {
@@ -774,6 +842,48 @@ function renderEquip() {
   }));
   const kg = state.equipment.reduce((sum, it) => sum + it.kg, 0);
   $('equipNote').textContent = state.equipment.length ? `Total echipamente: ${kg} kg` : '';
+}
+
+// Wall fixture form: type presets fill the size and height; fixed types lock their size.
+$('fxType').replaceChildren(...Object.entries(FIXTURES).map(([k, f]) => new Option(f.label, k)));
+$('fxWall').replaceChildren(...Object.entries(WALL_SIDES).map(([k, label]) => new Option(label, k)));
+function fixtureDefaults() {
+  const f = FIXTURES[$('fxType').value];
+  $('fxW').value = f.w;
+  $('fxH').value = f.h;
+  $('fxY').value = f.y;
+  $('fxW').disabled = $('fxH').disabled = !!f.fixed;
+}
+$('fxType').onchange = fixtureDefaults;
+fixtureDefaults();
+$('fxX').value = 500;
+$('fixForm').onsubmit = e => {
+  e.preventDefault();
+  const type = $('fxType').value, f = FIXTURES[type], side = $('fxWall').value, num = id => Math.round(+$(id).value);
+  const it = { type, wall: side, x: num('fxX'), y: num('fxY'), w: f.fixed ? f.w : num('fxW'), h: f.fixed ? f.h : num('fxH') };
+  const [L, W] = footprint(), span = Math.round((side === 'front' || side === 'back' ? L : W) * 1000 - 200);
+  const roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
+  if (it.x + it.w > span || it.y + it.h > roomH) {
+    $('fixNote').textContent = `Nu încape: peretele are ${span} mm lungime și ${roomH} mm înălțime.`;
+    return;
+  }
+  state.fixtures.push(it);
+  build();
+  renderFixtures();
+  toggleInterior(true);
+};
+function renderFixtures() {
+  $('fixList').replaceChildren(...state.fixtures.map((it, i) => {
+    const li = document.createElement('li'), txt = document.createElement('span'), del = document.createElement('button');
+    txt.className = 'txt';
+    txt.textContent = `${FIXTURES[it.type].label} · ${WALL_SIDES[it.wall]} · X ${it.x}, Y ${it.y} · ${it.w}×${it.h} mm`;
+    del.textContent = '×';
+    del.ariaLabel = `Șterge ${FIXTURES[it.type].label}`;
+    del.onclick = () => { state.fixtures.splice(i, 1); build(); renderFixtures(); };
+    li.append(txt, del);
+    return li;
+  }));
+  $('fixNote').textContent = '';
 }
 
 // Drag equipment across the floor in interior view; the camera holds still while dragging.
