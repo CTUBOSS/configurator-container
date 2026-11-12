@@ -82,6 +82,34 @@
     gap: 8px; padding: 6px 6px 6px 12px; border-radius: 10px; background: rgba(255,255,255,.92); box-shadow: 0 2px 10px rgba(0,0,0,.12); font-size: 13px; }
   .sel-info[hidden] { display: none; }
   .sel-info button { min-height: 0; padding: 4px 10px; border-color: #e5a29b; color: #b3261e; }
+  /* Panel: collapsible groups with icons, sticky price footer, language switch. */
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .lang { display: flex; flex: none; overflow: hidden; border: 1px solid #cfd6dc; border-radius: 8px; }
+  .lang button { min-height: 0; padding: 5px 9px; border: 0; border-radius: 0; font-size: 12px; font-weight: 600; }
+  .lang button.on { background: #1f6feb; color: #fff; }
+  .grp { margin-top: 8px; border-top: 1px solid #e3e7eb; }
+  .grp > summary { display: flex; align-items: center; gap: 8px; padding: 12px 0 6px; cursor: pointer; list-style: none; font-size: 14px; font-weight: 600; }
+  .grp > summary::-webkit-details-marker { display: none; }
+  .grp > summary svg { flex: none; color: #1f6feb; }
+  .grp > summary::after { content: ''; width: 7px; height: 7px; margin: 0 4px 0 auto; border-right: 2px solid #8a939b; border-bottom: 2px solid #8a939b; transform: rotate(45deg); transition: transform .15s; }
+  .grp[open] > summary::after { transform: rotate(-135deg); }
+  .grp:last-of-type { padding-bottom: 8px; }
+  h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 12px 0 6px; font-size: 11px; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase; color: #6b7680; }
+  h3 b { font-weight: 600; letter-spacing: 0; text-transform: none; color: #1d2329; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .row h3 { margin: 10px 0; }
+  .pair { display: flex; flex-wrap: wrap; gap: 0 18px; }
+  .opts.col { flex-direction: column; align-items: stretch; }
+  .opts.col button { text-align: left; }
+  button.link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 0; border: 0; background: none; color: #1f6feb; }
+  @media (prefers-reduced-motion: reduce) { .grp > summary::after { transition: none; } }
+  .price { position: sticky; bottom: 0; z-index: 1; margin-top: 10px; padding: 10px 0 4px; border-top: 1px solid #e3e7eb;
+    background: #fff; box-shadow: 0 -10px 12px -12px rgba(0,0,0,.35); }
+  .price summary { display: flex; align-items: baseline; gap: 8px; cursor: pointer; list-style: none; font-size: 13px; color: #6b7680; }
+  .price summary::-webkit-details-marker { display: none; }
+  .price summary b { margin-left: auto; font-size: 18px; color: #1d2329; font-variant-numeric: tabular-nums; }
+  .price table { margin-top: 8px; font-variant-numeric: tabular-nums; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -91,75 +119,87 @@
 </script>
 </head>
 <body>
-<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel">Șterge</button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
-  <h1>Configurator container DUALMAN</h1>
-  <p class="dims" id="dims"></p>
-  <h2>Lungime <span id="lengthVal"></span></h2>
-  <input type="range" id="lengthRange" min="0" step="1" list="lengthTicks" aria-label="Lungime">
-  <datalist id="lengthTicks"></datalist>
-  <div class="ticks" id="lengthLabels" aria-hidden="true"></div>
-  <h2>Lățime <span id="widthVal"></span></h2>
-  <input type="range" id="widthRange" min="0" step="1" list="widthTicks" aria-label="Lățime">
-  <datalist id="widthTicks"></datalist>
-  <div class="ticks" id="widthLabels" aria-hidden="true"></div>
-  <h2>Înălțime <span id="heightVal"></span></h2>
-  <input type="range" id="heightRange" min="0" step="1" list="heightTicks" aria-label="Înălțime">
-  <datalist id="heightTicks"></datalist>
-  <div class="ticks" id="heightLabels" aria-hidden="true"></div>
-  <h2>Număr ferestre</h2>
-  <div class="stepper"><button id="less" aria-label="Mai puține ferestre">−</button><span id="count"></span><button id="more" aria-label="Mai multe ferestre">+</button></div>
-  <p class="note" id="note"></p>
-  <h2>Tip fereastră</h2>
-  <div class="opts" id="winTypes"></div>
-  <h2>Poziție ușă</h2>
-  <div class="opts" id="doorPos"></div>
-  <h2>Iluminat exterior</h2>
-  <div class="opts" id="lamp"></div>
-  <h2>Culoare panouri</h2>
-  <div class="opts" id="colors"></div>
-  <h2>Culoare cadru</h2>
-  <div class="opts" id="frames"></div>
-  <h2>Tip perete</h2>
-  <div class="opts" id="walls"></div>
-  <div class="opts" style="margin-top: 8px"><button id="secOpen">Vezi secțiunea peretelui</button></div>
-  <h2>Specificații pereți</h2>
-  <div class="checks" id="specs"></div>
-  <h2>Echipamente interioare</h2>
-  <form id="equipForm" class="equip">
-    <input id="eqName" maxlength="30" placeholder="Denumire (opțional)" aria-label="Denumire echipament">
-    <input id="eqL" type="number" min="100" max="12000" step="10" required placeholder="L mm" aria-label="Lungime (mm)">
-    <input id="eqW" type="number" min="100" max="3000" step="10" required placeholder="l mm" aria-label="Lățime (mm)">
-    <input id="eqH" type="number" min="100" max="2800" step="10" required placeholder="H mm" aria-label="Înălțime (mm)">
-    <input id="eqKg" type="number" min="1" max="30000" step="1" required placeholder="kg" aria-label="Greutate (kg)">
-    <button type="submit">Adaugă echipament</button>
-  </form>
-  <ul id="equipList" class="equip-list"></ul>
-  <p class="note" id="equipNote"></p>
-  <h2>Elemente pe pereți</h2>
-  <form id="fixForm" class="equip">
-    <select id="fxType" aria-label="Tip element"></select>
-    <select id="fxWall" aria-label="Perete"></select>
-    <label class="fld">L · lățime (mm)<input id="fxW" type="number" min="20" max="3000" step="10" required></label>
-    <label class="fld" id="fxDL" hidden>l · adâncime (mm)<input id="fxD" type="number" min="200" max="3000" step="10" required></label>
-    <label class="fld">h · înălțime (mm)<input id="fxH" type="number" min="20" max="2800" step="10" required></label>
-    <select id="fxN" aria-label="Număr presetupe" hidden disabled></select>
-    <button type="submit">Adaugă pe perete</button>
-  </form>
-  <p class="hint" id="fxHint" hidden></p>
-  <p class="hint">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.</p>
-  <ul id="fixList" class="equip-list"></ul>
-  <p class="note" id="fixNote"></p>
-  <h2>Cuplare module</h2>
-  <div class="opts" id="modules"></div>
-  <div class="opts" id="couple" style="margin-top: 8px"></div>
-  <h2>Preț estimativ</h2>
-  <table id="price"></table>
-  <div class="chips" id="specChips"></div>
-  <h2>Mediu</h2>
-  <div class="opts" id="envs"></div>
-  <h2>Direcție soare <span id="sunDeg"></span></h2>
-  <input type="range" id="sun" min="0" max="359" value="135" aria-label="Direcție soare">
+  <header class="head">
+    <div class="head-row"><h1 data-t="Configurator container DUALMAN">Configurator container DUALMAN</h1>
+      <div class="lang" role="group" aria-label="Language"><button id="langRo" type="button">RO</button><button id="langEn" type="button">EN</button></div></div>
+    <p class="dims" id="dims"></p>
+  </header>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span data-t="Dimensiuni">Dimensiuni</span></summary>
+    <h3><span data-t="Lungime">Lungime</span> <b id="lengthVal"></b></h3>
+    <input type="range" id="lengthRange" min="0" step="1" list="lengthTicks" data-ta="Lungime" aria-label="Lungime">
+    <datalist id="lengthTicks"></datalist>
+    <div class="ticks" id="lengthLabels" aria-hidden="true"></div>
+    <h3><span data-t="Lățime">Lățime</span> <b id="widthVal"></b></h3>
+    <input type="range" id="widthRange" min="0" step="1" list="widthTicks" data-ta="Lățime" aria-label="Lățime">
+    <datalist id="widthTicks"></datalist>
+    <div class="ticks" id="widthLabels" aria-hidden="true"></div>
+    <h3><span data-t="Înălțime">Înălțime</span> <b id="heightVal"></b></h3>
+    <input type="range" id="heightRange" min="0" step="1" list="heightTicks" data-ta="Înălțime" aria-label="Înălțime">
+    <datalist id="heightTicks"></datalist>
+    <div class="ticks" id="heightLabels" aria-hidden="true"></div>
+  </details>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M12 3v18M4 12h16"/></svg><span data-t="Ferestre și ușă">Ferestre și ușă</span></summary>
+    <div class="row"><h3 data-t="Număr ferestre">Număr ferestre</h3>
+      <div class="stepper"><button id="less" data-ta="Mai puține ferestre" aria-label="Mai puține ferestre">−</button><span id="count"></span><button id="more" data-ta="Mai multe ferestre" aria-label="Mai multe ferestre">+</button></div></div>
+    <p class="note" id="note"></p>
+    <div class="pair">
+      <div><h3 data-t="Fereastră">Fereastră</h3><div class="opts" id="winTypes"></div></div>
+      <div><h3 data-t="Poziție ușă">Poziție ușă</h3><div class="opts" id="doorPos"></div></div>
+      <div><h3 data-t="Lampă exterior">Lampă exterior</h3><div class="opts" id="lamp"></div></div>
+    </div>
+  </details>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.9 1.2-1.7-.4-1 .3-2.3 1.4-2.3H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span data-t="Culori">Culori</span></summary>
+    <h3 data-t="Panouri">Panouri</h3><div class="opts" id="colors"></div>
+    <h3 data-t="Cadru">Cadru</h3><div class="opts" id="frames"></div>
+  </details>
+  <details class="grp" open><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span data-t="Pereți">Pereți</span></summary>
+    <div class="opts col" id="walls"></div>
+    <button id="secOpen" class="link" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span data-t="Vezi secțiunea peretelui">Vezi secțiunea peretelui</span></button>
+    <h3 data-t="Specificații">Specificații</h3><div class="checks" id="specs"></div>
+  </details>
+  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><span data-t="Interior">Interior</span></summary>
+    <h3 data-t="Echipamente">Echipamente</h3>
+    <form id="equipForm" class="equip">
+      <input id="eqName" maxlength="30" data-tp="Denumire (opțional)" placeholder="Denumire (opțional)" data-ta="Denumire echipament" aria-label="Denumire echipament">
+      <input id="eqL" type="number" min="100" max="12000" step="10" required placeholder="L mm" data-ta="Lungime (mm)" aria-label="Lungime (mm)">
+      <input id="eqW" type="number" min="100" max="3000" step="10" required placeholder="l mm" data-ta="Lățime (mm)" aria-label="Lățime (mm)">
+      <input id="eqH" type="number" min="100" max="2800" step="10" required placeholder="H mm" data-ta="Înălțime (mm)" aria-label="Înălțime (mm)">
+      <input id="eqKg" type="number" min="1" max="30000" step="1" required placeholder="kg" data-ta="Greutate (kg)" aria-label="Greutate (kg)">
+      <button type="submit" data-t="Adaugă echipament">Adaugă echipament</button>
+    </form>
+    <ul id="equipList" class="equip-list"></ul>
+    <p class="note" id="equipNote"></p>
+    <h3 data-t="Elemente pe pereți">Elemente pe pereți</h3>
+    <form id="fixForm" class="equip">
+      <select id="fxType" data-ta="Tip element" aria-label="Tip element"></select>
+      <select id="fxWall" data-ta="Perete" aria-label="Perete"></select>
+      <label class="fld"><span data-t="L · lățime (mm)">L · lățime (mm)</span><input id="fxW" type="number" min="20" max="3000" step="10" required></label>
+      <label class="fld" id="fxDL" hidden><span data-t="l · adâncime (mm)">l · adâncime (mm)</span><input id="fxD" type="number" min="200" max="3000" step="10" required></label>
+      <label class="fld"><span data-t="h · înălțime (mm)">h · înălțime (mm)</span><input id="fxH" type="number" min="20" max="2800" step="10" required></label>
+      <select id="fxN" data-ta="Număr presetupe" aria-label="Număr presetupe" hidden disabled></select>
+      <button type="submit" data-t="Adaugă pe perete">Adaugă pe perete</button>
+    </form>
+    <p class="hint" id="fxHint" hidden></p>
+    <p class="hint" data-t="Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.</p>
+    <ul id="fixList" class="equip-list"></ul>
+    <p class="note" id="fixNote"></p>
+  </details>
+  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><span data-t="Cuplare module">Cuplare module</span></summary>
+    <div class="opts" id="modules"></div>
+    <div class="opts" id="couple" style="margin-top: 8px"></div>
+  </details>
+  <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l6 9h-4l4 6H6l4-6H6z"/><path d="M12 18v3"/></svg><span data-t="Mediu">Mediu</span></summary>
+    <div class="opts" id="envs"></div>
+    <h3><span data-t="Direcție soare">Direcție soare</span> <b id="sunDeg"></b></h3>
+    <input type="range" id="sun" min="0" max="359" value="135" data-ta="Direcție soare" aria-label="Direcție soare">
+  </details>
+  <footer class="price">
+    <details><summary><span data-t="Total cu TVA">Total cu TVA</span><b id="priceTotal"></b></summary>
+      <table id="price"></table></details>
+    <div class="chips" id="specChips"></div>
+  </footer>
 </aside>
 <script type="module">
 import * as THREE from 'three';
@@ -718,6 +758,21 @@ function frameCamera() {
 // --- environment: monochrome hidden-line scenery kept clear of the assembly ---
 const ENVS = { neutral: 'Neutru', nature: 'Natură', site: 'Șantier', solar: 'Parc solar' };
 const SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const BULB = '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/>';
+// Option icons (label becomes the tooltip): window type, door position, exterior lamp, coupling direction.
+const WIN_ICONS = {
+  none: SVG + '<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 20L20 4"/></svg>',
+  std: SVG + '<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/></svg>',
+};
+const DOOR_ICONS = { // container seen from above, door marked on a long side or on the end
+  side: SVG + '<rect x="2" y="7" width="20" height="10" rx="1"/><path d="M9 17v-4h5v4"/></svg>',
+  end: SVG + '<rect x="2" y="7" width="20" height="10" rx="1"/><path d="M22 9.5h-4v5h4"/></svg>',
+};
+const LAMP_ICONS = { false: SVG + BULB + '<path d="M4 4l16 16"/></svg>', true: SVG + BULB + '</svg>' };
+const COUPLE_ICONS = {
+  width: SVG + '<rect x="4" y="3" width="16" height="8" rx="1"/><rect x="4" y="13" width="16" height="8" rx="1"/></svg>',
+  length: SVG + '<rect x="1" y="8" width="10.5" height="8" rx="1"/><rect x="12.5" y="8" width="10.5" height="8" rx="1"/></svg>',
+};
 const ENV_ICONS = {
   neutral: SVG + '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 20L20 4"/></svg>',
   nature: SVG + '<path d="M2 20l6-10 4 6 3-4 7 8z"/><circle cx="17" cy="6" r="2"/></svg>',
@@ -728,6 +783,7 @@ const NEUTRAL = { sky: 0xdfe5ea, ground: 0xc9d1d6 };
 const MONO = { sky: 0xf5f6f7, ground: 0xeef0f2, fill: 0xf8f9fa, line: 0x5f666d, grid: 0xd5d9dd };
 const NIGHT = { sky: 0x0b1220, ground: 0x1a2129, fill: 0x141b26, line: 0x4a5a70, grid: 0x222b36 }; // night: sky, ground and scenery
 let night = false;
+let turbineSpins = []; // wind turbine rotors, turned in the animation loop
 let envGroup = new THREE.Group();
 // Deterministic PRNG so scenery stays put between rebuilds.
 const seeded = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -736,6 +792,7 @@ function buildEnv() {
   scene.remove(envGroup);
   envGroup.traverse(o => { if (o.geometry) { o.geometry.dispose(); o.material.dispose(); } });
   envGroup = new THREE.Group();
+  turbineSpins = [];
   const mono = state.env !== 'neutral', pal = night ? NIGHT : MONO;
   scene.background.set(night ? NIGHT.sky : mono ? MONO.sky : NEUTRAL.sky);
   ground.material.color.set(night ? NIGHT.ground : mono ? MONO.ground : NEUTRAL.ground);
@@ -801,6 +858,54 @@ function buildEnv() {
     add(g, x, z, h / 2);
   };
 
+  // Cylinder member between two points (lattice towers).
+  const beam = (a, b, r) => {
+    const d = new THREE.Vector3().subVectors(b, a), m = add(new THREE.CylinderGeometry(r, r, d.length(), 6), 0, 0, 0);
+    m.position.copy(a).addScaledVector(d, 0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    return m;
+  };
+  // GSM mast: 30 m three-legged lattice tower (4.6 m base tapering to 1.6 m), X-braced every 3 m,
+  // three antenna sectors on top, two microwave dishes, lightning rod and a cabinet at the foot.
+  const gsmTower = (x, z) => {
+    const H = 30, legs = [0, 1, 2].map(i => i * 2 * Math.PI / 3 + Math.PI / 6);
+    const at = (i, y) => { const r = 2.3 - 1.5 * y / H; return new THREE.Vector3(x + r * Math.cos(legs[i]), y, z + r * Math.sin(legs[i])); };
+    for (let i = 0; i < 3; i++) beam(at(i, 0), at(i, H), 0.09);
+    for (let y = 0; y < H; y += 3) for (let i = 0; i < 3; i++) {
+      const j = (i + 1) % 3;
+      beam(at(i, y + 3), at(j, y + 3), 0.04);
+      beam(at(i, y), at(j, y + 3), 0.03);
+      beam(at(j, y), at(i, y + 3), 0.03);
+    }
+    for (let i = 0; i < 3; i++) for (const off of [-0.18, 0.18]) {
+      const a = legs[i] + Math.PI / 3 + off;
+      add(new THREE.BoxGeometry(0.3, 2.2, 0.12), x + 1.6 * Math.cos(a), z + 1.6 * Math.sin(a), H - 1.4).rotation.y = Math.PI / 2 - a;
+    }
+    for (const [a, y] of [[0.4, H - 6], [2.5, H - 8]]) {
+      add(new THREE.CylinderGeometry(0.5, 0.35, 0.3, 16), x + 1.5 * Math.cos(a), z + 1.5 * Math.sin(a), y).rotation.set(0, -a, Math.PI / 2);
+    }
+    beam(new THREE.Vector3(x, H, z), new THREE.Vector3(x, H + 3, z), 0.03);
+    add(new THREE.BoxGeometry(1.2, 1.8, 0.8), x + 3.2, z, 0.9);
+  };
+  // Wind turbine: 45 m tapered tower, nacelle, hub and a three-blade rotor that turns in the animation loop.
+  const turbine = (x, z, yaw) => {
+    add(new THREE.CylinderGeometry(0.9, 1.8, 45, 16), x, z, 22.5);
+    const head = new THREE.Group(), spin = new THREE.Group();
+    head.position.set(x, 45, z);
+    head.rotation.y = yaw;
+    envGroup.add(head);
+    head.add(add(new THREE.BoxGeometry(2.4, 2.4, 7, 2, 2, 4), 0, -1, 0)); // nacelle
+    spin.position.z = 2.8;
+    head.add(spin);
+    spin.add(add(new THREE.SphereGeometry(0.9, 12, 8), 0, 0, 0)); // hub
+    for (let k = 0; k < 3; k++) {
+      const blade = add(new THREE.CylinderGeometry(0.15, 0.5, 20, 4).scale(1, 1, 0.35).translate(0, 10.5, 0), 0, 0.3, 0);
+      blade.rotation.z = k * 2 * Math.PI / 3;
+      spin.add(blade);
+    }
+    turbineSpins.push(spin);
+  };
+
   if (state.env === 'nature') {
     for (let i = 0; i < 10; i++) { // far mountains
       const [x, z] = spot(80, 110), h = 25 + rand() * 30;
@@ -815,6 +920,9 @@ function buildEnv() {
     for (let i = 0; i < 30; i++) bush(...spot(clear - 1, clear + 18), 0.7 + rand() * 0.6);
     for (let i = 0; i < 24; i++) rock(...spot(clear, clear + 25), 0.6 + rand() * 1.2);
     for (let i = 0; i < 70; i++) tuft(...spot(clear - 1, clear + 15));
+    for (let i = 0; i < 4; i++) turbine(...spot(62, 78), rand() * 6.28); // wind farm in the distance
+    const ga = Math.PI + 0.9, gd = Math.max(20, clear + 6); // GSM mast ~20 m away, behind-left of the container
+    gsmTower(gd * Math.sin(ga), gd * Math.cos(ga));
   } else if (state.env === 'site') {
     const zr = -(clear + 6);
     add(new THREE.BoxGeometry(160, 0.02, 7), 0, zr, 0.01); // road
@@ -848,7 +956,116 @@ function buildEnv() {
 
 // --- UI ---
 const $ = id => document.getElementById(id);
-const eur = n => Math.round(n).toLocaleString('ro-RO') + ' €';
+const eur = n => Math.round(n).toLocaleString(loc()) + ' €';
+// i18n: the Romanian strings are the keys; EN maps them (with {0}-style placeholders) to English.
+const EN = {
+"Configurator container DUALMAN": "DUALMAN container configurator",
+"Dimensiuni": "Dimensions",
+"Lungime": "Length",
+"Lățime": "Width",
+"Înălțime": "Height",
+"Ferestre și ușă": "Windows & door",
+"Număr ferestre": "Windows",
+"Fereastră": "Window",
+"Poziție ușă": "Door",
+"Lampă exterior": "Outdoor lamp",
+"Mai puține ferestre": "Fewer windows",
+"Mai multe ferestre": "More windows",
+"Culori": "Colours",
+"Panouri": "Panels",
+"Cadru": "Frame",
+"Pereți": "Walls",
+"Vezi secțiunea peretelui": "View wall section",
+"Specificații": "Specifications",
+"Interior": "Interior",
+"Echipamente": "Equipment",
+"Adaugă echipament": "Add equipment",
+"Denumire (opțional)": "Name (optional)",
+"Denumire echipament": "Equipment name",
+"Lungime (mm)": "Length (mm)",
+"Lățime (mm)": "Width (mm)",
+"Înălțime (mm)": "Height (mm)",
+"Greutate (kg)": "Weight (kg)",
+"Elemente pe pereți": "Wall fixtures",
+"Tip element": "Fixture type",
+"Perete": "Wall",
+"Număr presetupe": "Gland count",
+"L · lățime (mm)": "L · width (mm)",
+"l · adâncime (mm)": "l · depth (mm)",
+"h · înălțime (mm)": "h · height (mm)",
+"Adaugă pe perete": "Add to wall",
+"Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți). Dimensiuni în mm.": "Picking a wall turns the view to face it. The fixture appears in the middle of the wall; then drag it into place (X / Y dimensions show while you move it). Sizes in mm.",
+"Cuplare module": "Module coupling",
+"Mediu": "Environment",
+"Direcție soare": "Sun direction",
+"Total cu TVA": "Total incl. VAT",
+"Total fără TVA": "Total excl. VAT",
+"TVA {0}%": "VAT {0}%",
+"Produsul include:": "Your product includes:",
+"Închide ușa": "Close door",
+"Deschide ușa": "Open door",
+"Stinge lumina": "Lights off",
+"Aprinde lumina": "Lights on",
+"Mod zi": "Day mode",
+"Mod noapte": "Night mode",
+"Vedere interior": "Interior view",
+"Secțiune perete": "Wall section",
+"Închide secțiunea": "Close section",
+"Secțiune prin perete": "Wall section",
+"Șterge": "Delete",
+"Ușă metalică": "Steel door",
+"Lateral": "On the side",
+"Capăt": "On the end",
+"Lampă LED exterior": "Outdoor LED lamp",
+"Fără": "None",
+"Lampă deasupra ușii": "Lamp above the door",
+"Fără ferestre": "No windows",
+"Panou sandwich PIR 60 mm": "PIR sandwich panel 60 mm",
+"Tablă cutată + vată minerală 60 mm": "Profiled sheet + mineral wool 60 mm",
+"Tablă zincată prevopsită": "Pre-painted galvanised steel",
+"Spumă rigidă PIR (λ 0,022)": "Rigid PIR foam (λ 0.022)",
+"Tablă cutată (înălțimea cutei)": "Profiled sheet (rib height)",
+"Vată minerală bazaltică (λ 0,040)": "Basalt mineral wool (λ 0.040)",
+"Rezistent la foc": "Fire resistant",
+"Termoizolant": "Thermally insulated",
+"Protecție anticorozivă C3": "C3 corrosion protection",
+"Priză dublă": "Double socket",
+"Placă presetupe": "Cable gland plate",
+"Gabarit rack: L = lățimea de-a lungul peretelui, l = adâncimea de la perete spre interior, h = înălțimea. Implicit 800 × 800 × 2000 mm, așezat pe podea.": "Rack size: L = width along the wall, l = depth from the wall into the room, h = height. Default 800 × 800 × 2000 mm, standing on the floor.",
+"Placă de presetupe: alegi numărul (4–16, doar par), dispuse pe 2 rânduri. Dimensiunea plăcii se calculează automat.": "Cable gland plate: pick the count (4–16, even only), set in 2 rows. The plate size is worked out automatically.",
+"Lateral față": "Front side",
+"Lateral spate": "Back side",
+"Capăt dreapta": "Right end",
+"Capăt stânga": "Left end",
+"Pe lățime": "Side by side",
+"Pe lungime": "End to end",
+"Neutru": "Neutral",
+"Natură": "Nature",
+"Șantier": "Building site",
+"Parc solar": "Solar park",
+"RAL 9010 alb": "RAL 9010 pure white",
+"RAL 9016 alb trafic": "RAL 9016 traffic white",
+"RAL 7035 gri deschis": "RAL 7035 light grey",
+"RAL 9005 negru": "RAL 9005 jet black",
+"RAL 7016 gri antracit": "RAL 7016 anthracite grey",
+"RAL 7024 gri grafit": "RAL 7024 graphite grey",
+"RAL 7037 gri praf": "RAL 7037 dusty grey",
+"RAL 9006 aluminiu": "RAL 9006 white aluminium",
+"Maxim {0} ferestre de acest tip pentru această configurație.": "At most {0} windows of this type fit this configuration.",
+"{0} × {1} × {2} mm exterior · {3} m²": "{0} × {1} × {2} mm outside · {3} m²",
+" · {0} module: {1} × {2} m, {3} m²": " · {0} modules: {1} × {2} m, {3} m²",
+"Nu încape: interiorul are {0} × {1} × {2} mm.": "Does not fit: the interior is {0} × {1} × {2} mm.",
+"Echipament {0}": "Equipment {0}",
+"Șterge {0}": "Delete {0}",
+"Total echipamente: {0} kg": "Equipment total: {0} kg",
+"{0} presetupe": "{0} glands",
+"Nu încape: peretele are {0} mm lungime și {1} mm înălțime, camera are {2} mm adâncime.": "Does not fit: the wall is {0} mm long and {1} mm high, the room is {2} mm deep.",
+"{0} selectat · tasta Delete sau": "{0} selected · press Delete or",
+"Grosime totală {0} mm · U ≈ {1} W/m²K · reacție la foc {2} (valori orientative)": "Total thickness {0} mm · U ≈ {1} W/m²K · reaction to fire {2} (indicative values)"
+};
+let lang = 'ro';
+const loc = () => (lang === 'en' ? 'en-GB' : 'ro-RO');
+const tr = (s, ...args) => ((lang === 'en' && EN[s]) || s).replace(/\{(\d)\}/g, (_, i) => args[i]);
 
 // `palette` (name -> hex) renders color swatches, `icons` (value -> svg) icon buttons; label then becomes the tooltip.
 function choice(id, entries, current, key, palette, icons) {
@@ -870,7 +1087,7 @@ function set(patch) {
   if (patch.winType === 'none') state.windows = 0;
   else if (patch.winType === 'std' && !state.windows) state.windows = 2;
   const max = openingWalls().reduce((sum, s) => sum + s.cap, 0);
-  $('note').textContent = state.windows > max ? `Maxim ${max} ferestre de acest tip pentru această configurație.` : '';
+  $('note').textContent = state.windows > max ? tr('Maxim {0} ferestre de acest tip pentru această configurație.', max) : '';
   state.windows = Math.max(0, Math.min(state.windows, max));
   state.winType = state.windows ? 'std' : 'none'; // zero windows is the 'none' option
   build();
@@ -881,18 +1098,18 @@ function set(patch) {
 
 function render() {
   const { l, w } = dims(), win = WINDOWS[state.winType], n = state.modules, [L, W] = footprint();
-  $('dims').textContent = `${state.length} × ${state.width} × ${state.height} mm exterior · ${(l * w).toFixed(1)} m²`
-    + (n > 1 ? ` · ${n} module: ${L.toFixed(2)} × ${W.toFixed(2)} m, ${(L * W).toFixed(1)} m²` : '');
+  $('dims').textContent = tr('{0} × {1} × {2} mm exterior · {3} m²', state.length, state.width, state.height, (l * w).toFixed(1))
+    + (n > 1 ? tr(' · {0} module: {1} × {2} m, {3} m²', n, L.toFixed(2), W.toFixed(2), (L * W).toFixed(1)) : '');
   for (const [key, s] of Object.entries(SLIDERS)) {
     $(key + 'Range').value = s.values.indexOf(state[key]);
     $(key + 'Val').textContent = s.show(state[key]);
   }
-  choice('envs', Object.entries(ENVS), state.env, 'env', null, ENV_ICONS);
+  choice('envs', Object.entries(ENVS).map(([k, v]) => [k, tr(v)]), state.env, 'env', null, ENV_ICONS);
   choice('modules', MODULES.map(v => [v, `${v}`]), state.modules, 'modules');
-  choice('couple', Object.entries(COUPLE), state.couple, 'couple');
-  choice('colors', Object.keys(COLORS).map(k => [k, k]), state.color, 'color', COLORS);
-  choice('frames', Object.keys(FRAMES).map(k => [k, k]), state.frame, 'frame', FRAMES);
-  choice('walls', Object.entries(WALLS).map(([k, v]) => [k, v.label]), state.wall, 'wall');
+  choice('couple', Object.entries(COUPLE).map(([k, v]) => [k, tr(v)]), state.couple, 'couple', null, COUPLE_ICONS);
+  choice('colors', Object.keys(COLORS).map(k => [k, tr(k)]), state.color, 'color', COLORS);
+  choice('frames', Object.keys(FRAMES).map(k => [k, tr(k)]), state.frame, 'frame', FRAMES);
+  choice('walls', Object.entries(WALLS).map(([k, v]) => [k, tr(v.label)]), state.wall, 'wall');
   renderSection();
   $('specs').replaceChildren(...Object.entries(SPECS).map(([k, label]) => {
     const row = document.createElement('label'), box = document.createElement('input');
@@ -900,27 +1117,28 @@ function render() {
     box.checked = state.specs.includes(k);
     // Specs don't affect the 3D model, so only the panel re-renders.
     box.onchange = () => { state.specs = box.checked ? [...state.specs, k] : state.specs.filter(s => s !== k); render(); };
-    row.append(box, label);
+    row.append(box, tr(label));
     return row;
   }));
-  const chips = state.specs.map(k => Object.assign(document.createElement('span'), { textContent: SPECS[k] }));
-  $('specChips').replaceChildren(...(chips.length ? [Object.assign(document.createElement('b'), { textContent: 'Produsul include:' }), ...chips] : []));
-  choice('doorPos', Object.entries(DOOR_POS), state.doorPos, 'doorPos');
-  choice('lamp', [[false, 'Fără'], [true, 'Lampă deasupra ușii']], state.lamp, 'lamp');
-  choice('winTypes', Object.entries(WINDOWS).map(([k, v]) => [k, v.label]), state.winType, 'winType');
+  const chips = state.specs.map(k => Object.assign(document.createElement('span'), { textContent: tr(SPECS[k]) }));
+  $('specChips').replaceChildren(...(chips.length ? [Object.assign(document.createElement('b'), { textContent: tr('Produsul include:') }), ...chips] : []));
+  choice('doorPos', Object.entries(DOOR_POS).map(([k, v]) => [k, tr(v)]), state.doorPos, 'doorPos', null, DOOR_ICONS);
+  choice('lamp', [[false, tr('Fără')], [true, tr('Lampă deasupra ușii')]], state.lamp, 'lamp', null, LAMP_ICONS);
+  choice('winTypes', Object.entries(WINDOWS).map(([k, v]) => [k, tr(v.label)]), state.winType, 'winType', null, WIN_ICONS);
   $('count').textContent = state.windows;
   const lines = [
     [`${n > 1 ? n + ' × ' : ''}Container ${(l * w).toFixed(1)} m² × ${PRICE.perM2} €`, n * l * w * PRICE.perM2],
     ...(state.height === 2896 ? [[`High cube${n > 1 ? ' × ' + n : ''}`, n * PRICE.highCube]] : []),
-    [DOORS[state.door].label, DOORS[state.door].price],
-    ...(state.lamp ? [[LAMP.label, LAMP.price]] : []),
-    ...(state.windows ? [[`${win.label} × ${state.windows}`, win.price * state.windows]] : []),
+    [tr(DOORS[state.door].label), DOORS[state.door].price],
+    ...(state.lamp ? [[tr(LAMP.label), LAMP.price]] : []),
+    ...(state.windows ? [[`${tr(win.label)} × ${state.windows}`, win.price * state.windows]] : []),
   ];
   const total = Math.round(lines.reduce((sum, [, p]) => sum + p, 0)), vat = Math.round(total * VAT);
   $('price').innerHTML = lines.map(([n, p]) => `<tr><td>${n}</td><td>${eur(p)}</td></tr>`).join('')
-    + `<tr class="total"><td>Total fără TVA</td><td>${eur(total)}</td></tr>`
-    + `<tr><td>TVA ${Math.round(VAT * 100)}%</td><td>${eur(vat)}</td></tr>`
-    + `<tr class="total"><td>Total cu TVA</td><td>${eur(total + vat)}</td></tr>`;
+    + `<tr class="total"><td>${tr('Total fără TVA')}</td><td>${eur(total)}</td></tr>`
+    + `<tr><td>${tr('TVA {0}%', Math.round(VAT * 100))}</td><td>${eur(vat)}</td></tr>`
+    + `<tr class="total"><td>${tr('Total cu TVA')}</td><td>${eur(total + vat)}</td></tr>`;
+  $('priceTotal').textContent = eur(total + vat);
 }
 
 // Stepped sliders: one stop per allowed value (index-based, so uneven lists still space evenly).
@@ -949,14 +1167,14 @@ setSun(+$('sun').value);
 
 function toggleDoor() {
   doorOpen = !doorOpen;
-  $('hudDoor').title = $('hudDoor').ariaLabel = doorOpen ? 'Închide ușa' : 'Deschide ușa';
+  hudTitles();
   $('hudDoor').className = doorOpen ? 'on' : '';
 }
 $('hudDoor').onclick = toggleDoor;
 // Light switch: interior ceiling light plus the exterior lamp (fitted on first switch-on).
 function toggleLights() {
   lightsOn = !lightsOn;
-  $('hudLight').title = $('hudLight').ariaLabel = lightsOn ? 'Stinge lumina' : 'Aprinde lumina';
+  hudTitles();
   $('hudLight').className = lightsOn ? 'on' : '';
   if (lightsOn && !state.lamp) return set({ lamp: true });
   build();
@@ -969,7 +1187,7 @@ function toggleNight() {
   sun.intensity = night ? 0.25 : 2;
   sun.color.set(night ? 0x9fb4ff : 0xffffff); // cool moonlight
   $('hudNight').className = night ? 'on' : '';
-  $('hudNight').title = $('hudNight').ariaLabel = night ? 'Mod zi' : 'Mod noapte';
+  hudTitles();
   buildEnv();
 }
 $('hudNight').onclick = toggleNight;
@@ -1036,9 +1254,9 @@ function clampItem(it) {
 $('equipForm').onsubmit = e => {
   e.preventDefault();
   const [L, W] = footprint(), num = id => Math.round(+$(id).value), roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
-  const it = { name: $('eqName').value.trim() || `Echipament ${state.equipment.length + 1}`, l: num('eqL'), w: num('eqW'), h: num('eqH'), kg: num('eqKg'), x: 0, z: 0 };
+  const it = { name: $('eqName').value.trim() || tr('Echipament {0}', state.equipment.length + 1), l: num('eqL'), w: num('eqW'), h: num('eqH'), kg: num('eqKg'), x: 0, z: 0 };
   if (it.l > (L - 0.2) * 1000 || it.w > (W - 0.2) * 1000 || it.h > roomH) {
-    $('equipNote').textContent = `Nu încape: interiorul are ${Math.round((L - 0.2) * 1000)} × ${Math.round((W - 0.2) * 1000)} × ${roomH} mm.`;
+    $('equipNote').textContent = tr('Nu încape: interiorul are {0} × {1} × {2} mm.', Math.round((L - 0.2) * 1000), Math.round((W - 0.2) * 1000), roomH);
     return;
   }
   state.equipment.push(it);
@@ -1055,19 +1273,24 @@ function renderEquip() {
     txt.className = 'txt';
     txt.textContent = `${it.name} · ${it.l}×${it.w}×${it.h} mm · ${it.kg} kg`;
     del.textContent = '×';
-    del.ariaLabel = `Șterge ${it.name}`;
+    del.ariaLabel = tr('Șterge {0}', it.name);
     del.onclick = () => { state.equipment.splice(i, 1); build(); renderEquip(); };
     li.append(sw, txt, del);
     return li;
   }));
   const kg = state.equipment.reduce((sum, it) => sum + it.kg, 0);
-  $('equipNote').textContent = state.equipment.length ? `Total echipamente: ${kg} kg` : '';
+  $('equipNote').textContent = state.equipment.length ? tr('Total echipamente: {0} kg', kg) : '';
 }
 
 // Wall fixture form: type presets fill the size and height; fixed types lock their size.
-$('fxType').replaceChildren(...Object.entries(FIXTURES).map(([k, f]) => new Option(f.label, k)));
-$('fxWall').replaceChildren(...Object.entries(WALL_SIDES).map(([k, label]) => new Option(label, k)));
-$('fxN').replaceChildren(...GLAND_COUNTS.map(n => new Option(`${n} presetupe`, n)));
+function fillFixtureSelects() { // (re)labels the selects in the current language, keeping the picks
+  const keep = [$('fxType').value, $('fxWall').value, $('fxN').value];
+  $('fxType').replaceChildren(...Object.entries(FIXTURES).map(([k, f]) => new Option(tr(f.label), k)));
+  $('fxWall').replaceChildren(...Object.entries(WALL_SIDES).map(([k, label]) => new Option(tr(label), k)));
+  $('fxN').replaceChildren(...GLAND_COUNTS.map(n => new Option(tr('{0} presetupe', n), n)));
+  if (keep[0]) [$('fxType').value, $('fxWall').value, $('fxN').value] = keep;
+}
+fillFixtureSelects();
 function glandSize() {
   const s = glandPlate(+$('fxN').value);
   $('fxW').value = s.w;
@@ -1082,7 +1305,7 @@ function fixtureDefaults() {
   $('fxD').disabled = $('fxDL').hidden = type !== 'rack'; // depth only for racks
   $('fxN').disabled = $('fxN').hidden = type !== 'gland'; // gland count only for gland plates
   if (type === 'gland') glandSize();
-  $('fxHint').textContent = FIX_HINTS[type] || '';
+  $('fxHint').textContent = tr(FIX_HINTS[type] || '');
   $('fxHint').hidden = !FIX_HINTS[type];
 }
 $('fxN').onchange = glandSize;
@@ -1106,7 +1329,7 @@ $('fixForm').onsubmit = e => {
   const roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
   const deep = Math.round((side === 'front' || side === 'back' ? W : L) * 1000 - 200);
   if (it.x + it.w > span || it.y + it.h > roomH || (it.d || 0) > deep) {
-    $('fixNote').textContent = `Nu încape: peretele are ${span} mm lungime și ${roomH} mm înălțime, camera are ${deep} mm adâncime.`;
+    $('fixNote').textContent = tr('Nu încape: peretele are {0} mm lungime și {1} mm înălțime, camera are {2} mm adâncime.', span, roomH, deep);
     return;
   }
   state.fixtures.push(it);
@@ -1118,9 +1341,9 @@ function renderFixtures() {
   $('fixList').replaceChildren(...state.fixtures.map((it, i) => {
     const li = document.createElement('li'), txt = document.createElement('span'), del = document.createElement('button');
     txt.className = 'txt';
-    txt.textContent = `${FIXTURES[it.type].label} · ${WALL_SIDES[it.wall]} · X ${it.x}, Y ${it.y} · ${it.n ? `${it.n} presetupe · ` : ''}${it.d ? `${it.w}×${it.d}×${it.h} mm (L×l×h)` : `${it.w}×${it.h} mm`}`;
+    txt.textContent = `${tr(FIXTURES[it.type].label)} · ${tr(WALL_SIDES[it.wall])} · X ${it.x}, Y ${it.y} · ${it.n ? `${tr('{0} presetupe', it.n)} · ` : ''}${it.d ? `${it.w}×${it.d}×${it.h} mm (L×l×h)` : `${it.w}×${it.h} mm`}`;
     del.textContent = '×';
-    del.ariaLabel = `Șterge ${FIXTURES[it.type].label}`;
+    del.ariaLabel = tr('Șterge {0}', tr(FIXTURES[it.type].label));
     del.onclick = () => { state.fixtures.splice(i, 1); build(); renderFixtures(); };
     li.append(txt, del);
     return li;
@@ -1153,7 +1376,7 @@ function select(target) { // target: { list: 'equipment' | 'fixtures', it, obj }
   if (!target) return;
   selBox = new THREE.BoxHelper(target.obj, 0x1f6feb);
   scene.add(selBox);
-  $('selText').textContent = `${target.list === 'equipment' ? target.it.name : FIXTURES[target.it.type].label} selectat · tasta Delete sau`;
+  $('selText').textContent = tr('{0} selectat · tasta Delete sau', target.list === 'equipment' ? target.it.name : tr(FIXTURES[target.it.type].label));
 }
 function deleteSelected() {
   if (!selected) return;
@@ -1224,7 +1447,7 @@ const SECTION_DEFS = '<defs>'
   + '<pattern id="p-wool" width="12" height="10" patternUnits="userSpaceOnUse"><rect width="12" height="10" fill="#e9c46a"/><path d="M0 5l3-4 3 8 3-8 3 4" fill="none" stroke="#b8902f"/></pattern>'
   + '</defs>';
 const LAYER_FILL = { steel: '#5b6168', pir: 'url(#p-pir)', wool: 'url(#p-wool)', trapez: '#ffffff' };
-const mm = v => v.toLocaleString('ro-RO', { maximumFractionDigits: 1 });
+const mm = v => v.toLocaleString(loc(), { maximumFractionDigits: 1 });
 function renderSection() {
   const wall = WALLS[state.wall], top = 52, H = 160;
   let x = 34, body = '', marks = '';
@@ -1247,15 +1470,15 @@ function renderSection() {
     + `<text x="${x + 4}" y="${top + H / 2}" font-size="10" fill="#6b7680">INT</text>`;
   $('secSvg').setAttribute('viewBox', `0 0 ${x + 30} ${dy + 24}`);
   $('secSvg').innerHTML = SECTION_DEFS + body + marks;
-  $('secTitle').textContent = wall.label;
+  $('secTitle').textContent = tr(wall.label);
   $('secLegend').replaceChildren(...wall.layers.map(([, name, t]) => {
     const li = document.createElement('li');
-    li.textContent = `${name} — ${mm(t)} mm`;
+    li.textContent = `${tr(name)} — ${mm(t)} mm`;
     return li;
   }));
-  const u = wall.u.toLocaleString('ro-RO', { minimumFractionDigits: 2 });
-  $('secSpec').textContent = `Grosime totală ${mm(total)} mm · U ≈ ${u} W/m²K · reacție la foc ${wall.fire} (valori orientative)`
-    + (state.specs.length ? ` · ${state.specs.map(k => SPECS[k]).join(', ')}` : '');
+  const u = wall.u.toLocaleString(loc(), { minimumFractionDigits: 2 });
+  $('secSpec').textContent = tr('Grosime totală {0} mm · U ≈ {1} W/m²K · reacție la foc {2} (valori orientative)', mm(total), u, wall.fire)
+    + (state.specs.length ? ` · ${state.specs.map(k => tr(SPECS[k])).join(', ')}` : '');
 }
 function toggleSection(on = $('section').hidden) {
   $('section').hidden = !on;
@@ -1264,6 +1487,34 @@ function toggleSection(on = $('section').hidden) {
 $('hudSection').onclick = () => toggleSection();
 $('secOpen').onclick = () => toggleSection(true);
 $('secClose').onclick = () => toggleSection(false);
+
+// Language switch: static text carries its Romanian key in data-t (text), data-tp (placeholder) or data-ta (title + aria-label).
+function hudTitles() {
+  const set = (id, s) => { $(id).title = $(id).ariaLabel = tr(s); };
+  set('hudDoor', doorOpen ? 'Închide ușa' : 'Deschide ușa');
+  set('hudLight', lightsOn ? 'Stinge lumina' : 'Aprinde lumina');
+  set('hudNight', night ? 'Mod zi' : 'Mod noapte');
+  set('hudInterior', 'Vedere interior');
+  set('hudSection', 'Secțiune perete');
+}
+function applyLang(code) {
+  lang = code;
+  document.documentElement.lang = code;
+  for (const el of document.querySelectorAll('[data-t]')) el.textContent = tr(el.dataset.t);
+  for (const el of document.querySelectorAll('[data-tp]')) el.placeholder = tr(el.dataset.tp);
+  for (const el of document.querySelectorAll('[data-ta]')) el.title = el.ariaLabel = tr(el.dataset.ta);
+  $('langRo').className = code === 'ro' ? 'on' : '';
+  $('langEn').className = code === 'en' ? 'on' : '';
+  hudTitles();
+  fillFixtureSelects();
+  fixtureDefaults();
+  render();
+  renderEquip();
+  renderFixtures();
+  try { localStorage.setItem('lang', code); } catch { /* storage blocked: the choice just isn't remembered */ }
+}
+$('langRo').onclick = () => applyLang('ro');
+$('langEn').onclick = () => applyLang('en');
 
 new ResizeObserver(() => {
   renderer.setSize(view.clientWidth, view.clientHeight);
@@ -1276,6 +1527,7 @@ renderer.setAnimationLoop(() => {
   for (const leaf of doorLeaves) leaf.rotation.y = -doorAngle;
   if (interiorView) updateCutaway();
   if (selBox) selBox.update(); // follows a dragged selection
+  for (const rotor of turbineSpins) rotor.rotation.z += 0.006;
   if (camGoal) { // ease toward the wall view picked in focusWall()
     camera.position.lerp(camGoal.pos, 0.12);
     controls.target.lerp(camGoal.target, 0.12);
@@ -1287,6 +1539,7 @@ renderer.setAnimationLoop(() => {
 set({});
 buildEnv();
 frameCamera();
+applyLang((() => { try { return localStorage.getItem('lang'); } catch { return null; } })() === 'en' ? 'en' : 'ro');
 </script>
 </body>
 </html>
