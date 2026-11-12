@@ -76,6 +76,12 @@
   .hint { margin: 6px 0 0; font-size: 12px; color: #6b7680; }
   .drag-tip { position: absolute; z-index: 3; transform: translate(14px, -30px); padding: 4px 8px; border-radius: 6px;
     background: rgba(29,35,41,.88); color: #fff; font-size: 12px; white-space: nowrap; pointer-events: none; }
+  .fld { display: grid; gap: 2px; min-width: 0; font-size: 11px; color: #6b7680; }
+  .fld[hidden] { display: none; }
+  .sel-info { position: absolute; top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); z-index: 2; display: flex; align-items: center;
+    gap: 8px; padding: 6px 6px 6px 12px; border-radius: 10px; background: rgba(255,255,255,.92); box-shadow: 0 2px 10px rgba(0,0,0,.12); font-size: 13px; }
+  .sel-info[hidden] { display: none; }
+  .sel-info button { min-height: 0; padding: 4px 10px; border-color: #e5a29b; color: #b3261e; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -85,7 +91,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel">Șterge</button></div><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
   <h1>Configurator container DUALMAN</h1>
   <p class="dims" id="dims"></p>
@@ -135,9 +141,9 @@
   <form id="fixForm" class="equip">
     <select id="fxType" aria-label="Tip element"></select>
     <select id="fxWall" aria-label="Perete"></select>
-    <input id="fxW" type="number" min="20" max="3000" step="10" required placeholder="lățime" aria-label="Lățime (mm)">
-    <input id="fxH" type="number" min="20" max="2800" step="10" required placeholder="înălțime" aria-label="Înălțime (mm)">
-    <input id="fxD" type="number" min="200" max="3000" step="10" required placeholder="adâncime" aria-label="Adâncime de la perete (mm)" hidden>
+    <label class="fld">L · lățime (mm)<input id="fxW" type="number" min="20" max="3000" step="10" required></label>
+    <label class="fld" id="fxDL" hidden>l · adâncime (mm)<input id="fxD" type="number" min="200" max="3000" step="10" required></label>
+    <label class="fld">h · înălțime (mm)<input id="fxH" type="number" min="20" max="2800" step="10" required></label>
     <select id="fxN" aria-label="Număr presetupe" hidden disabled></select>
     <button type="submit">Adaugă pe perete</button>
   </form>
@@ -211,14 +217,14 @@ const SPECS = { fire: 'Rezistent la foc', thermal: 'Termoizolant', corrosion: 'P
 const FIXTURES = {
   socket: { label: 'Priză dublă', w: 150, h: 80, y: 300, fixed: true },
   rack: { label: 'Rack', w: 800, h: 2000, d: 800, y: 0 }, // L (along the wall) × l (depth) × h
-  hole: { label: 'Gol dreptunghiular (AC)', w: 800, h: 300, y: 1800 },
-  gland: { label: 'Placă presetupe', w: 130, h: 130, y: 200, fixed: true }, // size follows the gland count
+  ac: { label: 'Split AC', w: 900, h: 300, y: 1850, fixed: true }, // indoor unit; its outdoor unit hangs outside
+  gland: { label: 'Placă presetupe', w: 200, h: 200, y: 200, fixed: true }, // size follows the gland count
 };
-// Gland plate: an even count of 4–16 glands in two rows at 50 mm pitch, plus a 15 mm margin all round.
+// Gland plate: an even count of 4–16 glands in two rows at 80 mm pitch, plus a 20 mm margin all round.
 const GLAND_COUNTS = [4, 6, 8, 10, 12, 14, 16];
-const glandPlate = n => ({ w: n / 2 * 50 + 30, h: 130 });
+const glandPlate = n => ({ w: n / 2 * 80 + 40, h: 200 });
 const FIX_HINTS = {
-  rack: 'Gabarit rack, în mm: L = lățimea de-a lungul peretelui, l = adâncimea de la perete spre interior, h = înălțimea (câmpurile 3, 5 și 4). Implicit 800 × 800 × 2000, așezat pe podea (Y = 0).',
+  rack: 'Gabarit rack: L = lățimea de-a lungul peretelui, l = adâncimea de la perete spre interior, h = înălțimea. Implicit 800 × 800 × 2000 mm, așezat pe podea.',
   gland: 'Placă de presetupe: alegi numărul (4–16, doar par), dispuse pe 2 rânduri. Dimensiunea plăcii se calculează automat.',
 };
 const WALL_SIDES = { front: 'Lateral față', back: 'Lateral spate', right: 'Capăt dreapta', left: 'Capăt stânga' };
@@ -300,6 +306,7 @@ function layout(widths, inner) {
 }
 
 function build() {
+  select(null); // its meshes are about to be rebuilt
   scene.remove(group);
   doorLeaves = [];
   cutFaces = [];
@@ -322,7 +329,9 @@ function build() {
     floor: new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.8, side: THREE.BackSide, ...INSIDE }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
     inner: new THREE.MeshStandardMaterial({ color: 0xd9d4cc, roughness: 0.7, ...INSIDE }),
-    ceilLight: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: lightsOn ? 1.2 : 0.05, ...INSIDE }),
+    lumBody: new THREE.MeshStandardMaterial({ color: 0xd5d8db, roughness: 0.5, ...INSIDE }),
+    lumCap: new THREE.MeshStandardMaterial({ color: 0x8f959b, roughness: 0.5, ...INSIDE }),
+    lumDiffuser: new THREE.MeshStandardMaterial({ color: 0xf7f8f8, emissive: 0xffffff, emissiveIntensity: lightsOn ? 1.4 : 0.08, roughness: 0.3, ...INSIDE }),
     innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.6, roughness: 0.1, ...INSIDE }),
     equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...INSIDE })),
     equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
@@ -332,7 +341,6 @@ function build() {
     fixWhite: new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.5, ...INSIDE }),
     fixDark: new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.6, ...INSIDE }),
     fixRack: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.5, metalness: 0.2, ...INSIDE }),
-    fixHole: new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 1, ...INSIDE }),
     fixRecess: new THREE.MeshStandardMaterial({ color: 0xe2e2de, roughness: 0.5, ...INSIDE }),
     fixSilver: new THREE.MeshStandardMaterial({ color: 0xa9aeb3, roughness: 0.35, metalness: 0.4, ...INSIDE }),
     fixDev: new THREE.MeshStandardMaterial({ color: 0x2c3036, roughness: 0.5, ...INSIDE }),
@@ -397,6 +405,23 @@ function build() {
     mesh.userData.item = it;
     return mesh;
   });
+
+  // Ceiling luminaires: IP65 linear LED fittings (1200 × 80 mm) in rows along the room; the opal diffuser glows
+  // when the lights are on. They stay visible in the interior view (only the ceiling surface is cut away).
+  const lamps = [], rows = Math.max(1, Math.round(Wr / 2.4)), per = Math.max(1, Math.round(Lr / 2));
+  const yc = POST + 0.005 + rh - 0.045;
+  for (let r = 0; r < rows; r++) for (let i = 0; i < per; i++) {
+    const x = -Lr / 2 + (i + 0.5) * Lr / per, z = -Wr / 2 + (r + 0.5) * Wr / rows;
+    box(1.2, 0.07, 0.08, m.lumBody, x, yc + 0.01, z);
+    box(1.16, 0.025, 0.07, m.lumDiffuser, x, yc - 0.035, z);
+    for (const s of [-1, 1]) box(0.02, 0.09, 0.085, m.lumCap, x + s * 0.6, yc, z); // sealed end caps
+    lamps.push([x, z]);
+  }
+  if (lightsOn) for (const [x, z] of lamps.slice(0, 4)) { // a few real lights; the rest glow via the diffuser
+    const light = new THREE.PointLight(0xfff6ea, 3, 6);
+    light.position.set(x, yc - 0.3, z);
+    group.add(light);
+  }
 
   // Openings go on the assembly's exterior walls; an end door goes on the last module's +x end.
   for (const s of openingWalls()) {
@@ -510,30 +535,46 @@ function fixtureAt(type, g, w, h, m, depth, count) {
     inner.push(box(w - 0.06, h - 0.06, 0.004, m.fixGlass, 0, 0, zd, fg));
     for (const s of [-1, 1]) inner.push(box(w, 0.03, 0.02, m.fixRack, 0, s * (h / 2 - 0.015), zd, fg), box(0.03, h, 0.02, m.fixRack, s * (w / 2 - 0.015), 0, zd, fg));
     inner.push(box(0.015, 0.12, 0.02, m.fixSilver, w / 2 - 0.06, 0, zd - 0.02, fg));
-  } else if (type === 'hole') {
-    inner.push(box(w, h, 0.004, m.fixHole, 0, 0, zi - 0.002, fg));
-    box(w, h, 0.004, m.void, 0, 0, 0.012, fg);
-    for (const [sx, sy, bw, bh] of [[0, 1, w + 0.08, 0.04], [0, -1, w + 0.08, 0.04], [1, 0, 0.04, h], [-1, 0, 0.04, h]]) {
-      inner.push(box(bw, bh, 0.012, m.fixWhite, sx * (w / 2 + 0.02), sy * (h / 2 + 0.02), zi - 0.006, fg));
-      box(bw, bh, 0.02, m.trim, sx * (w / 2 + 0.02), sy * (h / 2 + 0.02), 0.012, fg);
-    }
-  } else { // gland plate: steel plate on each face, glands in two rows at 50 mm pitch
-    const cols = count / 2;
+  } else if (type === 'ac') { // split AC: indoor unit inside, outdoor unit on the outside face at the same spot
+    const dd = 0.22;
+    inner.push(box(w, h, dd, m.fixWhite, 0, 0, zi - dd / 2, fg));
+    inner.push(box(w - 0.04, 0.025, 0.004, m.fixDark, 0, -h / 2 + 0.04, zi - dd - 0.002, fg)); // air outlet
+    const flap = box(w - 0.06, 0.006, 0.07, m.fixRecess, 0, -h / 2 + 0.02, zi - dd + 0.02, fg); // louver
+    flap.rotation.x = -0.5;
+    inner.push(flap);
+    for (let i = 0; i < 6; i++) inner.push(box(w - 0.08, 0.002, 0.008, m.fixRecess, 0, h / 2 + 0.001, zi - 0.03 - i * 0.03, fg)); // intake grille
+    inner.push(box(0.06, 0.014, 0.002, m.fixLed, w / 2 - 0.09, h / 2 - 0.06, zi - dd - 0.001, fg)); // display
+    const od = 0.3, ow = 0.8, oh = 0.55, zf = 0.012 + od;
+    box(ow, oh, od, m.trim, 0, 0, 0.012 + od / 2, fg);
+    tube(0.19, 0.19, 0.008, 32, m.void, -0.12, 0, zf + 0.004, fg); // fan opening
+    tube(0.04, 0.04, 0.012, 16, m.trim, -0.12, 0, zf + 0.008, fg); // fan hub
+    for (const a of [0, Math.PI / 3, -Math.PI / 3]) box(0.38, 0.008, 0.006, m.trim, -0.12, 0, zf + 0.011, fg).rotation.z = a; // fan guard
+    for (let i = 0; i < 8; i++) box(0.006, oh - 0.12, 0.004, m.void, 0.2 + i * 0.022, 0, zf + 0.002, fg); // coil fins
+    for (const s of [-1, 1]) box(0.04, 0.04, od + 0.04, m.void, s * 0.3, -oh / 2 - 0.02, 0.012 + (od + 0.04) / 2, fg); // wall brackets
+  } else { // gland plate: steel plate on each face; each gland is a hex nut plus a tapered cap, 80 mm pitch
+    const cols = count / 2, P = 0.08;
     inner.push(box(w, h, 0.004, m.fixSilver, 0, 0, zi - 0.002, fg));
     box(w, h, 0.004, m.steel, 0, 0, 0.012, fg);
     for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {
-      for (const [z, mat] of [[zi - 0.019, m.fixDark], [0.029, m.void]]) {
-        const gland = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.03, 12), mat);
-        gland.rotation.x = Math.PI / 2;
-        gland.position.set((c - (cols - 1) / 2) * 0.05, (r - 0.5) * 0.05, z);
-        fg.add(gland);
-        if (mat === m.fixDark) inner.push(gland);
-      }
+      const gx = (c - (cols - 1) / 2) * P, gy = (r - 0.5) * P;
+      inner.push(tube(0.028, 0.028, 0.012, 6, m.fixDark, gx, gy, zi - 0.01, fg), tube(0.022, 0.017, 0.03, 16, m.fixDev, gx, gy, zi - 0.031, fg));
+      tube(0.028, 0.028, 0.012, 6, m.void, gx, gy, 0.02, fg);
+      tube(0.017, 0.022, 0.03, 16, m.void, gx, gy, 0.041, fg);
     }
   }
   for (const mesh of inner) cutFaces.push([mesh, g]);
   fg.userData.inner = inner;
   return fg;
+}
+
+// Cylinder lying along z (out of the wall): radius r1 on the +z end, r2 on the -z end.
+function tube(r1, r2, len, seg, mat, x, y, z, parent) {
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, len, seg), mat);
+  t.rotation.x = Math.PI / 2;
+  t.position.set(x, y, z);
+  t.castShadow = t.receiveShadow = true;
+  parent.add(t);
+  return t;
 }
 
 function doorAt(g, x, m) {
@@ -543,20 +584,13 @@ function doorAt(g, x, m) {
   mask.position.set(x, y, 0.021);
   mask.renderOrder = -1; // must write the stencil before the facade draws
   g.add(mask);
-  // Reveal through the wall thickness, then a ceiling light in the middle of the room (local -z is inward).
+  // Reveal through the wall thickness (local -z is inward).
   for (const sx of [-1, 1]) cutFaces.push([box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g), g]);
   cutFaces.push([box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g), g]);
   // The door as seen from inside, shown only in the interior view.
   const insideFace = box(DOOR.w, DOOR.h, 0.012, m.cutDoor, x, y, -0.096, g);
   insideFace.userData.cutaway = true;
   cutFaces.push([insideFace, g]);
-  const [L, W] = footprint(), fz = -((state.doorPos === 'side' ? W : L) - 0.11) / 2; // middle of the room depth
-  box(0.6, 0.02, 0.6, m.ceilLight, x, dims().h - POST - 0.06, fz, g).userData.ceiling = true;
-  if (lightsOn) {
-    const ceiling = new THREE.PointLight(0xfff4e0, 4, 7);
-    ceiling.position.set(x, dims().h - POST - 0.3, fz);
-    g.add(ceiling);
-  }
   // Leaf hinges on its front-left edge and swings outward.
   const leaf = new THREE.Group();
   leaf.position.set(x - DOOR.w / 2, y, 0.025);
@@ -851,8 +885,7 @@ function applyView() {
     const mats = [].concat(o.material);
     const inside = mats.some(mt => mt.stencilFunc === THREE.EqualStencilFunc);
     if (inside) mats.forEach(mt => { mt.stencilWrite = !interiorView; });
-    // The ceiling is culled from above, so its light panel would float; hide it with the shell.
-    o.visible = o.userData.cutaway ? interiorView : !interiorView || (inside && !o.userData.ceiling);
+    o.visible = o.userData.cutaway ? interiorView : !interiorView || inside;
   });
 }
 // Each frame in interior view: walls whose outside faces the camera drop to a low curb
@@ -877,6 +910,7 @@ function focusWall(side) {
 }
 controls.addEventListener('start', () => { camGoal = null; }); // the user takes over the camera
 function toggleInterior(on = !interiorView) {
+  select(null);
   interiorView = on;
   $('hudInterior').className = on ? 'on' : '';
   applyView();
@@ -939,7 +973,7 @@ function fixtureDefaults() {
   $('fxH').value = f.h;
   $('fxW').disabled = $('fxH').disabled = !!f.fixed;
   $('fxD').value = f.d || '';
-  $('fxD').disabled = $('fxD').hidden = type !== 'rack'; // depth only for racks
+  $('fxD').disabled = $('fxDL').hidden = type !== 'rack'; // depth only for racks
   $('fxN').disabled = $('fxN').hidden = type !== 'gland'; // gland count only for gland plates
   if (type === 'gland') glandSize();
   $('fxHint').textContent = FIX_HINTS[type] || '';
@@ -1003,11 +1037,40 @@ function showTip(e, text) {
   tip.style.top = `${e.clientY - r.top}px`;
   tip.hidden = false;
 }
+// Selection (interior view): click an equipment box or a wall fixture to select it;
+// Delete / Backspace, or the pill's button on touch screens, removes it.
+let selected = null, selBox = null;
+function select(target) { // target: { list: 'equipment' | 'fixtures', it, obj } or null
+  if (selBox) { scene.remove(selBox); selBox.geometry.dispose(); selBox.material.dispose(); selBox = null; }
+  selected = target;
+  $('selInfo').hidden = !target;
+  if (!target) return;
+  selBox = new THREE.BoxHelper(target.obj, 0x1f6feb);
+  scene.add(selBox);
+  $('selText').textContent = `${target.list === 'equipment' ? target.it.name : FIXTURES[target.it.type].label} selectat · tasta Delete sau`;
+}
+function deleteSelected() {
+  if (!selected) return;
+  const list = state[selected.list];
+  list.splice(list.indexOf(selected.it), 1);
+  build(); // also clears the selection
+  renderEquip();
+  renderFixtures();
+}
+window.addEventListener('keydown', e => {
+  if (!selected || !['Delete', 'Backspace'].includes(e.key) || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  e.preventDefault();
+  deleteSelected();
+});
+$('selDel').onclick = deleteSelected;
+
 renderer.domElement.addEventListener('pointerdown', e => {
   if (!interiorView) return;
   pointerRay(e);
   // Raycasts ignore visibility, so skip fixtures hidden on cut-away walls.
   const mesh = ray.intersectObjects([...equipMeshes, ...fixtureMeshes], false).find(h => h.object.visible)?.object;
+  select(!mesh ? null : mesh.userData.item ? { list: 'equipment', it: mesh.userData.item, obj: mesh }
+    : { list: 'fixtures', it: mesh.userData.fix.it, obj: mesh.userData.fix.fg });
   if (!mesh) return;
   if (mesh.userData.item) {
     dragPlane.set(new THREE.Vector3(0, 1, 0), -mesh.position.y);
@@ -1106,6 +1169,7 @@ renderer.setAnimationLoop(() => {
   doorAngle += ((doorOpen ? DOOR.open : 0) - doorAngle) * 0.12;
   for (const leaf of doorLeaves) leaf.rotation.y = -doorAngle;
   if (interiorView) updateCutaway();
+  if (selBox) selBox.update(); // follows a dragged selection
   if (camGoal) { // ease toward the wall view picked in focusWall()
     camera.position.lerp(camGoal.pos, 0.12);
     controls.target.lerp(camGoal.target, 0.12);
