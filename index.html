@@ -140,9 +140,10 @@
     <input id="fxW" type="number" min="20" max="3000" step="10" required placeholder="lățime" aria-label="Lățime (mm)">
     <input id="fxH" type="number" min="20" max="2800" step="10" required placeholder="înălțime" aria-label="Înălțime (mm)">
     <input id="fxD" type="number" min="200" max="3000" step="10" required placeholder="adâncime" aria-label="Adâncime de la perete (mm)" hidden>
+    <select id="fxN" aria-label="Număr presetupe" hidden disabled></select>
     <button type="submit">Adaugă pe perete</button>
   </form>
-  <p class="hint" id="fxHint" hidden>Gabarit rack, în mm: L = lățimea de-a lungul peretelui, l = adâncimea de la perete spre interior, h = înălțimea (câmpurile 3, 5 și 4). Implicit 800 × 800 × 2000, așezat pe podea (Y = 0).</p>
+  <p class="hint" id="fxHint" hidden></p>
   <p class="hint">Alegerea peretelui rotește vederea spre el. X: de la colțul din stânga, privit din interior. Y: de la podea la marginea de jos. Dimensiuni în mm. Poți și trage elementul direct pe perete.</p>
   <ul id="fixList" class="equip-list"></ul>
   <p class="note" id="fixNote"></p>
@@ -213,7 +214,14 @@ const FIXTURES = {
   socket: { label: 'Priză dublă', w: 150, h: 80, y: 300, fixed: true },
   rack: { label: 'Rack', w: 800, h: 2000, d: 800, y: 0 }, // L (along the wall) × l (depth) × h
   hole: { label: 'Gol dreptunghiular (AC)', w: 800, h: 300, y: 1800 },
-  gland: { label: 'Presetupă', w: 50, h: 50, y: 200, fixed: true },
+  gland: { label: 'Placă presetupe', w: 130, h: 130, y: 200, fixed: true }, // size follows the gland count
+};
+// Gland plate: an even count of 4–16 glands in two rows at 50 mm pitch, plus a 15 mm margin all round.
+const GLAND_COUNTS = [4, 6, 8, 10, 12, 14, 16];
+const glandPlate = n => ({ w: n / 2 * 50 + 30, h: 130 });
+const FIX_HINTS = {
+  rack: 'Gabarit rack, în mm: L = lățimea de-a lungul peretelui, l = adâncimea de la perete spre interior, h = înălțimea (câmpurile 3, 5 și 4). Implicit 800 × 800 × 2000, așezat pe podea (Y = 0).',
+  gland: 'Placă de presetupe: alegi numărul (4–16, doar par), dispuse pe 2 rânduri. Dimensiunea plăcii se calculează automat.',
 };
 const WALL_SIDES = { front: 'Lateral față', back: 'Lateral spate', right: 'Capăt dreapta', left: 'Capăt stânga' };
 const wallMM = wall => wall.layers.reduce((sum, l) => sum + l[2], 0);
@@ -407,7 +415,7 @@ function build() {
   for (const it of state.fixtures) {
     const [fx, fz, rot, len] = frames[it.wall], span = len - 0.2, fw = it.w / 1000, fh = it.h / 1000;
     const X = Math.max(0, Math.min(it.x / 1000, span - fw)); // stays on the wall if the container shrinks
-    const g = wall(fx, fz, rot), fg = fixtureAt(it.type, g, fw, fh, m, (it.d || FIXTURES.rack.d) / 1000);
+    const g = wall(fx, fz, rot), fg = fixtureAt(it.type, g, fw, fh, m, (it.d || FIXTURES.rack.d) / 1000, it.n || 4);
     fg.position.set(span / 2 - X - fw / 2, POST + 0.005 + it.y / 1000 + fh / 2, 0);
     for (const mesh of fg.userData.inner) { mesh.userData.fix = { it, g, fg, span, fw, fh }; fixtureMeshes.push(mesh); }
   }
@@ -454,7 +462,7 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
 // One wall fixture, built around its own origin in a group inside wall frame g
 // (x along the wall, +z outward, inner face at z -0.09). Inner parts hide with their wall
 // in the interior cut-away; cut-outs and glands also show outside. Returns the group.
-function fixtureAt(type, g, w, h, m, depth) {
+function fixtureAt(type, g, w, h, m, depth, count) {
   const fg = new THREE.Group(), zi = -0.09, inner = [];
   g.add(fg);
   if (type === 'socket') { // double socket: plate, two round recesses with pin holes and earth clips
@@ -511,13 +519,18 @@ function fixtureAt(type, g, w, h, m, depth) {
       inner.push(box(bw, bh, 0.012, m.fixWhite, sx * (w / 2 + 0.02), sy * (h / 2 + 0.02), zi - 0.006, fg));
       box(bw, bh, 0.02, m.trim, sx * (w / 2 + 0.02), sy * (h / 2 + 0.02), 0.012, fg);
     }
-  } else { // cable gland: a short tube on each face of the wall
-    for (const [z, mat] of [[zi - 0.02, m.fixDark], [0.02, m.void]]) {
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(w / 2, w / 2, 0.04, 16), mat);
-      tube.rotation.x = Math.PI / 2;
-      tube.position.z = z;
-      fg.add(tube);
-      if (mat === m.fixDark) inner.push(tube);
+  } else { // gland plate: steel plate on each face, glands in two rows at 50 mm pitch
+    const cols = count / 2;
+    inner.push(box(w, h, 0.004, m.fixSilver, 0, 0, zi - 0.002, fg));
+    box(w, h, 0.004, m.steel, 0, 0, 0.012, fg);
+    for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {
+      for (const [z, mat] of [[zi - 0.019, m.fixDark], [0.029, m.void]]) {
+        const gland = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.03, 12), mat);
+        gland.rotation.x = Math.PI / 2;
+        gland.position.set((c - (cols - 1) / 2) * 0.05, (r - 0.5) * 0.05, z);
+        fg.add(gland);
+        if (mat === m.fixDark) inner.push(gland);
+      }
     }
   }
   for (const mesh of inner) cutFaces.push([mesh, g]);
@@ -916,15 +929,26 @@ function renderEquip() {
 // Wall fixture form: type presets fill the size and height; fixed types lock their size.
 $('fxType').replaceChildren(...Object.entries(FIXTURES).map(([k, f]) => new Option(f.label, k)));
 $('fxWall').replaceChildren(...Object.entries(WALL_SIDES).map(([k, label]) => new Option(label, k)));
+$('fxN').replaceChildren(...GLAND_COUNTS.map(n => new Option(`${n} presetupe`, n)));
+function glandSize() {
+  const s = glandPlate(+$('fxN').value);
+  $('fxW').value = s.w;
+  $('fxH').value = s.h;
+}
 function fixtureDefaults() {
-  const f = FIXTURES[$('fxType').value];
+  const type = $('fxType').value, f = FIXTURES[type];
   $('fxW').value = f.w;
   $('fxH').value = f.h;
   $('fxY').value = f.y;
   $('fxW').disabled = $('fxH').disabled = !!f.fixed;
   $('fxD').value = f.d || '';
-  $('fxD').disabled = $('fxD').hidden = $('fxHint').hidden = $('fxType').value !== 'rack'; // depth only for racks
+  $('fxD').disabled = $('fxD').hidden = type !== 'rack'; // depth only for racks
+  $('fxN').disabled = $('fxN').hidden = type !== 'gland'; // gland count only for gland plates
+  if (type === 'gland') glandSize();
+  $('fxHint').textContent = FIX_HINTS[type] || '';
+  $('fxHint').hidden = !FIX_HINTS[type];
 }
+$('fxN').onchange = glandSize;
 $('fxType').onchange = fixtureDefaults;
 $('fxWall').onchange = () => focusWall($('fxWall').value);
 fixtureDefaults();
@@ -932,7 +956,7 @@ $('fxX').value = 500;
 $('fixForm').onsubmit = e => {
   e.preventDefault();
   const type = $('fxType').value, f = FIXTURES[type], side = $('fxWall').value, num = id => Math.round(+$(id).value);
-  const it = { type, wall: side, x: num('fxX'), y: num('fxY'), w: f.fixed ? f.w : num('fxW'), h: f.fixed ? f.h : num('fxH'), ...(type === 'rack' && { d: num('fxD') }) };
+  const it = { type, wall: side, x: num('fxX'), y: num('fxY'), w: num('fxW'), h: num('fxH'), ...(type === 'rack' && { d: num('fxD') }), ...(type === 'gland' && { n: num('fxN') }) };
   const [L, W] = footprint(), span = Math.round((side === 'front' || side === 'back' ? L : W) * 1000 - 200);
   const roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
   const deep = Math.round((side === 'front' || side === 'back' ? W : L) * 1000 - 200);
@@ -949,7 +973,7 @@ function renderFixtures() {
   $('fixList').replaceChildren(...state.fixtures.map((it, i) => {
     const li = document.createElement('li'), txt = document.createElement('span'), del = document.createElement('button');
     txt.className = 'txt';
-    txt.textContent = `${FIXTURES[it.type].label} · ${WALL_SIDES[it.wall]} · X ${it.x}, Y ${it.y} · ${it.d ? `${it.w}×${it.d}×${it.h} mm (L×l×h)` : `${it.w}×${it.h} mm`}`;
+    txt.textContent = `${FIXTURES[it.type].label} · ${WALL_SIDES[it.wall]} · X ${it.x}, Y ${it.y} · ${it.n ? `${it.n} presetupe · ` : ''}${it.d ? `${it.w}×${it.d}×${it.h} mm (L×l×h)` : `${it.w}×${it.h} mm`}`;
     del.textContent = '×';
     del.ariaLabel = `Șterge ${FIXTURES[it.type].label}`;
     del.onclick = () => { state.fixtures.splice(i, 1); build(); renderFixtures(); };
