@@ -91,7 +91,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel">Șterge</button></div><div class="hud"><button id="hudDoor" title="Deschide ușa" aria-label="Deschide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" title="Aprinde lumina" aria-label="Aprinde lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel">Șterge</button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
   <h1>Configurator container DUALMAN</h1>
   <p class="dims" id="dims"></p>
@@ -114,7 +114,7 @@
   <div class="opts" id="winTypes"></div>
   <h2>Poziție ușă</h2>
   <div class="opts" id="doorPos"></div>
-  <div class="opts" style="margin-top: 8px"><button id="doorToggle">Deschide ușa</button></div>
+  <div class="opts" style="margin-top: 8px"><button id="doorToggle" class="on">Închide ușa</button></div>
   <h2>Iluminat exterior</h2>
   <div class="opts" id="lamp"></div>
   <h2>Culoare panouri</h2>
@@ -233,7 +233,7 @@ const wallMM = wall => wall.layers.reduce((sum, l) => sum + l[2], 0);
 const MODULES = [1, 2, 3, 4, 5, 6];
 const COUPLE = { width: 'Pe lățime', length: 'Pe lungime' };
 const state = { frame: 'RAL 9005 negru', modules: 1, couple: 'width', env: 'nature',
-  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'end', lamp: false, wall: 'sandwich', specs: [], equipment: [], fixtures: [], winType: 'std', windows: 3 };
+  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', lamp: false, wall: 'sandwich', specs: [], equipment: [], fixtures: [], winType: 'std', windows: 3 };
 const dims = () => ({ l: state.length / 1000, w: state.width / 1000, h: state.height / 1000 });
 
 // Center [x, z] of module i in the coupled assembly (identical modules, centered on the origin).
@@ -274,7 +274,8 @@ const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI / 2 - 0.05;
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f94, 1.2));
+const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8f94, 1.2);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 2);
 sun.position.set(8, 14, 10);
 sun.castShadow = true;
@@ -290,7 +291,7 @@ scene.add(ground);
 
 let group = new THREE.Group();
 // Door leaves (hinge pivots) from the last build; the animation loop swings them toward doorOpen.
-let doorLeaves = [], doorOpen = false, doorAngle = 0, lightsOn = false, interiorView = false, equipMeshes = [], cutWalls = [], cutFaces = [], fixtureMeshes = [];
+let doorLeaves = [], doorOpen = true, doorAngle = DOOR.open, lightsOn = true, interiorView = false, equipMeshes = [], cutWalls = [], cutFaces = [], fixtureMeshes = [];
 function box(w, h, d, mat, x, y, z, parent = group) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
@@ -726,6 +727,8 @@ const ENV_ICONS = {
 };
 const NEUTRAL = { sky: 0xdfe5ea, ground: 0xc9d1d6 };
 const MONO = { sky: 0xf5f6f7, ground: 0xeef0f2, fill: 0xf8f9fa, line: 0x5f666d, grid: 0xd5d9dd };
+const NIGHT = { sky: 0x0b1220, ground: 0x1a2129, fill: 0x141b26, line: 0x4a5a70, grid: 0x222b36 }; // night: sky, ground and scenery
+let night = false;
 let envGroup = new THREE.Group();
 // Deterministic PRNG so scenery stays put between rebuilds.
 const seeded = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -734,14 +737,14 @@ function buildEnv() {
   scene.remove(envGroup);
   envGroup.traverse(o => { if (o.geometry) { o.geometry.dispose(); o.material.dispose(); } });
   envGroup = new THREE.Group();
-  const mono = state.env !== 'neutral';
-  scene.background.set(mono ? MONO.sky : NEUTRAL.sky);
-  ground.material.color.set(mono ? MONO.ground : NEUTRAL.ground);
+  const mono = state.env !== 'neutral', pal = night ? NIGHT : MONO;
+  scene.background.set(night ? NIGHT.sky : mono ? MONO.sky : NEUTRAL.sky);
+  ground.material.color.set(night ? NIGHT.ground : mono ? MONO.ground : NEUTRAL.ground);
   if (!mono) return scene.add(envGroup);
 
   const [L, W] = footprint(), clear = Math.hypot(L, W) / 2 + 3, rand = seeded(7);
-  const fill = new THREE.MeshBasicMaterial({ color: MONO.fill, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-  const line = new THREE.LineBasicMaterial({ color: MONO.line });
+  const fill = new THREE.MeshBasicMaterial({ color: pal.fill, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const line = new THREE.LineBasicMaterial({ color: pal.line });
   // A flat fill hides lines behind it; the edges carry the drawing. `wire` shows every triangle (lattice look).
   const add = (geo, x, z, y, wire = false) => {
     const o = new THREE.Mesh(geo, fill);
@@ -750,7 +753,7 @@ function buildEnv() {
     envGroup.add(o);
     return o;
   };
-  const grid = new THREE.GridHelper(400, 320, MONO.grid, MONO.grid);
+  const grid = new THREE.GridHelper(400, 320, pal.grid, pal.grid);
   grid.position.y = 0.005;
   envGroup.add(grid);
 
@@ -932,6 +935,17 @@ function toggleLights() {
   build();
 }
 $('hudLight').onclick = toggleLights;
+// Day / night: night dims the sky, sun and scenery so the lamps carry the scene.
+function toggleNight() {
+  night = !night;
+  hemi.intensity = night ? 0.12 : 1.2;
+  sun.intensity = night ? 0.25 : 2;
+  sun.color.set(night ? 0x9fb4ff : 0xffffff); // cool moonlight
+  $('hudNight').className = night ? 'on' : '';
+  $('hudNight').title = $('hudNight').ariaLabel = night ? 'Mod zi' : 'Mod noapte';
+  buildEnv();
+}
+$('hudNight').onclick = toggleNight;
 // A tap/click on the door leaf toggles it; drags (orbiting the camera) are ignored.
 const ray = new THREE.Raycaster(), down = new THREE.Vector2();
 renderer.domElement.addEventListener('pointerdown', e => down.set(e.clientX, e.clientY));
