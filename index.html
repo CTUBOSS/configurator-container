@@ -67,7 +67,7 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .chips b { width: 100%; font-size: 12px; font-weight: 600; color: #6b7680; }
   .chips span { padding: 4px 8px; border-radius: 999px; background: #e8f0fe; color: #1f4fb0; font-size: 12px; }
-  /* Length slider labels: each label is centered on its stop; side padding matches the thumb inset. */
+  /* Slider labels: each label is centered on its stop; side padding matches the thumb inset. */
   .ticks { display: flex; justify-content: space-between; padding: 0 8px; margin-top: 2px; font-size: 11px; color: #6b7680; }
   .ticks span { display: flex; justify-content: center; width: 0; }
 </style>
@@ -87,10 +87,14 @@
   <input type="range" id="lengthRange" min="0" step="1" list="lengthTicks" aria-label="Lungime">
   <datalist id="lengthTicks"></datalist>
   <div class="ticks" id="lengthLabels" aria-hidden="true"></div>
-  <h2>Lățime</h2>
-  <div class="opts" id="widths"></div>
-  <h2>Înălțime</h2>
-  <div class="opts" id="heights"></div>
+  <h2>Lățime <span id="widthVal"></span></h2>
+  <input type="range" id="widthRange" min="0" step="1" list="widthTicks" aria-label="Lățime">
+  <datalist id="widthTicks"></datalist>
+  <div class="ticks" id="widthLabels" aria-hidden="true"></div>
+  <h2>Înălțime <span id="heightVal"></span></h2>
+  <input type="range" id="heightRange" min="0" step="1" list="heightTicks" aria-label="Înălțime">
+  <datalist id="heightTicks"></datalist>
+  <div class="ticks" id="heightLabels" aria-hidden="true"></div>
   <h2>Număr ferestre</h2>
   <div class="stepper"><button id="less" aria-label="Mai puține ferestre">−</button><span id="count"></span><button id="more" aria-label="Mai multe ferestre">+</button></div>
   <p class="note" id="note"></p>
@@ -130,7 +134,7 @@
   <h2>Mediu</h2>
   <div class="opts" id="envs"></div>
   <h2>Direcție soare <span id="sunDeg"></span></h2>
-  <input type="range" id="sun" min="0" max="359" value="39" aria-label="Direcție soare">
+  <input type="range" id="sun" min="0" max="359" value="135" aria-label="Direcție soare">
 </aside>
 <script type="module">
 import * as THREE from 'three';
@@ -613,10 +617,10 @@ function render() {
   const { l, w } = dims(), win = WINDOWS[state.winType], n = state.modules, [L, W] = footprint();
   $('dims').textContent = `${state.length} × ${state.width} × ${state.height} mm exterior · ${(l * w).toFixed(1)} m²`
     + (n > 1 ? ` · ${n} module: ${L.toFixed(2)} × ${W.toFixed(2)} m, ${(L * W).toFixed(1)} m²` : '');
-  $('lengthRange').value = LENGTHS.indexOf(state.length);
-  $('lengthVal').textContent = `${state.length / 1000} m`;
-  choice('widths', WIDTHS.map(v => [v, `${v} mm`]), state.width, 'width');
-  choice('heights', Object.entries(HEIGHTS).map(([k, v]) => [+k, v]), state.height, 'height');
+  for (const [key, s] of Object.entries(SLIDERS)) {
+    $(key + 'Range').value = s.values.indexOf(state[key]);
+    $(key + 'Val').textContent = s.show(state[key]);
+  }
   choice('envs', Object.entries(ENVS), state.env, 'env', null, ENV_ICONS);
   choice('modules', MODULES.map(v => [v, `${v}`]), state.modules, 'modules');
   choice('couple', Object.entries(COUPLE), state.couple, 'couple');
@@ -653,11 +657,18 @@ function render() {
     + `<tr class="total"><td>Total cu TVA</td><td>${eur(total + vat)}</td></tr>`;
 }
 
-// Length slider: one stop per available length (index-based, so uneven lists still space evenly).
-$('lengthRange').max = LENGTHS.length - 1;
-$('lengthTicks').replaceChildren(...LENGTHS.map((_, i) => Object.assign(document.createElement('option'), { value: i })));
-$('lengthLabels').replaceChildren(...LENGTHS.map(v => Object.assign(document.createElement('span'), { textContent: v / 1000 })));
-$('lengthRange').oninput = e => set({ length: LENGTHS[+e.target.value] });
+// Stepped sliders: one stop per allowed value (index-based, so uneven lists still space evenly).
+const SLIDERS = {
+  length: { values: LENGTHS, show: v => `${v / 1000} m`, tick: v => v / 1000 },
+  width: { values: WIDTHS, show: v => `${v} mm`, tick: v => v },
+  height: { values: Object.keys(HEIGHTS).map(Number), show: v => HEIGHTS[v], tick: v => v },
+};
+for (const [key, s] of Object.entries(SLIDERS)) {
+  $(key + 'Range').max = s.values.length - 1;
+  $(key + 'Ticks').replaceChildren(...s.values.map((_, i) => Object.assign(document.createElement('option'), { value: i })));
+  $(key + 'Labels').replaceChildren(...s.values.map(v => Object.assign(document.createElement('span'), { textContent: s.tick(v) })));
+  $(key + 'Range').oninput = e => set({ [key]: s.values[+e.target.value] });
+}
 $('less').onclick = () => set({ windows: state.windows - 1 });
 $('more').onclick = () => set({ windows: state.windows + 1 });
 
