@@ -240,13 +240,8 @@ function build() {
     floor: new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.8, side: THREE.BackSide, ...INSIDE }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
     inner: new THREE.MeshStandardMaterial({ color: 0xd9d4cc, roughness: 0.7, ...INSIDE }),
-    innerDark: new THREE.MeshStandardMaterial({ color: 0x3a3d40, roughness: 0.6, ...INSIDE }),
     ceilLight: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: lightsOn ? 1.2 : 0.05, ...INSIDE }),
     innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.6, roughness: 0.1, ...INSIDE }),
-    wood: new THREE.MeshStandardMaterial({ color: 0xc8ab84, roughness: 0.6, ...INSIDE }),
-    fabric: new THREE.MeshStandardMaterial({ color: 0x56606b, roughness: 0.95, ...INSIDE }),
-    fabricLight: new THREE.MeshStandardMaterial({ color: 0x6b7682, roughness: 0.95, ...INSIDE }),
-    binders: [0x2f5d8a, 0x9c3b32, 0x6b7378, 0x3d6b4a, 0xc9a43b].map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...INSIDE })),
     equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...INSIDE })),
     equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
     casting: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.45, metalness: 0.1 }),
@@ -350,14 +345,14 @@ function doorAt(g, x, m) {
   mask.position.set(x, y, 0.021);
   mask.renderOrder = -1; // must write the stencil before the facade draws
   g.add(mask);
-  // Reveal through the wall thickness, then furniture and a ceiling light at the far wall (local -z is inward).
+  // Reveal through the wall thickness, then a ceiling light in the middle of the room (local -z is inward).
   for (const sx of [-1, 1]) box(0.02, DOOR.h, 0.11, m.inner, x + sx * (DOOR.w / 2 - 0.01), y, -0.035, g);
   box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g);
-  const [fx, fz] = furnish(g, x, m);
-  box(0.6, 0.02, 0.6, m.ceilLight, fx, dims().h - POST - 0.06, fz + 0.3, g).userData.ceiling = true;
+  const [L, W] = footprint(), fz = -((state.doorPos === 'side' ? W : L) - 0.11) / 2; // middle of the room depth
+  box(0.6, 0.02, 0.6, m.ceilLight, x, dims().h - POST - 0.06, fz, g).userData.ceiling = true;
   if (lightsOn) {
     const ceiling = new THREE.PointLight(0xfff4e0, 4, 7);
-    ceiling.position.set(fx, dims().h - POST - 0.3, fz + 0.3);
+    ceiling.position.set(x, dims().h - POST - 0.3, fz);
     g.add(ceiling);
   }
   // Leaf hinges on its front-left edge and swings outward.
@@ -389,59 +384,6 @@ function doorAt(g, x, m) {
       g.add(light);
     }
   }
-}
-
-// Office furniture along the far wall, in the door's wall frame (x along the wall, -z inward).
-// The desk faces the door; the cabinet and sofa go on whichever side of the desk has more free wall.
-function furnish(g, doorX, m) {
-  const [L, W] = footprint(), side = state.doorPos === 'side';
-  const span = (side ? L : W) - 0.2, c = side ? -g.position.x : g.position.z;
-  const lo = c - span / 2, hi = c + span / 2, y0 = POST + 0.005, back = -((side ? W : L) - 0.11);
-  const dx = Math.min(hi - 0.8, Math.max(lo + 0.8, doorX)), dz = back + 0.4;
-  // Desk: top, side panels, modesty panel, monitor and keyboard.
-  box(1.5, 0.03, 0.75, m.wood, dx, y0 + 0.735, dz, g);
-  for (const s of [-1, 1]) box(0.03, 0.72, 0.7, m.wood, dx + s * 0.72, y0 + 0.36, dz, g);
-  box(1.44, 0.4, 0.02, m.wood, dx, y0 + 0.5, dz - 0.3, g);
-  box(0.55, 0.33, 0.02, m.innerDark, dx, y0 + 1.09, dz - 0.2, g);
-  box(0.06, 0.18, 0.05, m.innerDark, dx, y0 + 0.84, dz - 0.22, g);
-  box(0.45, 0.015, 0.15, m.innerDark, dx, y0 + 0.758, dz + 0.1, g);
-  // Office chair: five-star base, gas column, seat, backrest toward the door.
-  const cz = dz + 0.7;
-  for (let i = 0; i < 5; i++) {
-    const a = i * Math.PI * 2 / 5;
-    box(0.3, 0.03, 0.04, m.innerDark, dx + Math.cos(a) * 0.15, y0 + 0.05, cz + Math.sin(a) * 0.15, g).rotation.y = -a;
-  }
-  box(0.05, 0.38, 0.05, m.innerDark, dx, y0 + 0.25, cz, g);
-  box(0.48, 0.07, 0.46, m.fabric, dx, y0 + 0.47, cz, g);
-  box(0.46, 0.55, 0.06, m.fabric, dx, y0 + 0.8, cz + 0.22, g);
-  const free = { [-1]: dx - 0.75 - lo, [1]: hi - dx - 0.75 }, used = { [-1]: 0, [1]: 0 };
-  for (const [w, place] of [[0.8, cabinet], [1.8, sofa]]) {
-    const s = free[1] - used[1] >= free[-1] - used[-1] ? 1 : -1;
-    if (free[s] - used[s] < w + 0.15) continue;
-    place(g, dx + s * (0.75 + used[s] + 0.15 + w / 2), back, y0, m);
-    used[s] += w + 0.15;
-  }
-  return [dx, dz];
-}
-
-// Open shelving unit (0.8 x 1.9 m) with rows of document binders.
-function cabinet(g, x, back, y0, m) {
-  const z = back + 0.21;
-  box(0.8, 1.9, 0.01, m.wood, x, y0 + 0.95, back + 0.015, g);
-  for (const s of [-1, 1]) box(0.02, 1.9, 0.4, m.wood, x + s * 0.39, y0 + 0.95, z, g);
-  for (let k = 0; k <= 5; k++) box(0.78, 0.02, 0.4, m.wood, x, y0 + 0.01 + k * 0.376, z, g);
-  for (let k = 0; k <= 3; k++) for (let i = 0; i < 9; i++) {
-    box(0.07, 0.3, 0.28, m.binders[(i + k) % m.binders.length], x - 0.305 + i * 0.08, y0 + 0.17 + k * 0.376, z + 0.04, g);
-  }
-}
-
-// Two-seat sofa (1.8 m) with arms and seat cushions.
-function sofa(g, x, back, y0, m) {
-  const z = back + 0.45;
-  box(1.8, 0.42, 0.85, m.fabric, x, y0 + 0.21, z, g);
-  box(1.8, 0.45, 0.18, m.fabric, x, y0 + 0.64, z - 0.335, g);
-  for (const s of [-1, 1]) box(0.18, 0.62, 0.85, m.fabric, x + s * 0.81, y0 + 0.31, z, g);
-  for (const s of [-1, 1]) box(0.71, 0.12, 0.62, m.fabricLight, x + s * 0.36, y0 + 0.48, z + 0.08, g);
 }
 
 function windowAt(g, x, m) {
