@@ -139,8 +139,10 @@
     <input id="fxY" type="number" min="0" max="2800" step="10" required placeholder="Y mm" aria-label="Înălțimea de la podea (mm)">
     <input id="fxW" type="number" min="20" max="3000" step="10" required placeholder="lățime" aria-label="Lățime (mm)">
     <input id="fxH" type="number" min="20" max="2800" step="10" required placeholder="înălțime" aria-label="Înălțime (mm)">
+    <input id="fxD" type="number" min="200" max="3000" step="10" required placeholder="adâncime" aria-label="Adâncime de la perete (mm)" hidden>
     <button type="submit">Adaugă pe perete</button>
   </form>
+  <p class="hint" id="fxHint" hidden>Gabarit rack, în mm: L = lățimea de-a lungul peretelui, l = adâncimea de la perete spre interior, h = înălțimea (câmpurile 3, 5 și 4). Implicit 800 × 800 × 2000, așezat pe podea (Y = 0).</p>
   <p class="hint">Alegerea peretelui rotește vederea spre el. X: de la colțul din stânga, privit din interior. Y: de la podea la marginea de jos. Dimensiuni în mm. Poți și trage elementul direct pe perete.</p>
   <ul id="fixList" class="equip-list"></ul>
   <p class="note" id="fixNote"></p>
@@ -209,7 +211,7 @@ const SPECS = { fire: 'Rezistent la foc', thermal: 'Termoizolant', corrosion: 'P
 // Wall fixtures, sizes in mm; y = floor to bottom edge. Fixed types keep their catalogue size.
 const FIXTURES = {
   socket: { label: 'Priză dublă', w: 150, h: 80, y: 300, fixed: true },
-  rack: { label: 'Rack de perete', w: 600, h: 640, y: 1200, depth: 450 },
+  rack: { label: 'Rack', w: 800, h: 2000, d: 800, y: 0 }, // L (along the wall) × l (depth) × h
   hole: { label: 'Gol dreptunghiular (AC)', w: 800, h: 300, y: 1800 },
   gland: { label: 'Presetupă', w: 50, h: 50, y: 200, fixed: true },
 };
@@ -405,7 +407,7 @@ function build() {
   for (const it of state.fixtures) {
     const [fx, fz, rot, len] = frames[it.wall], span = len - 0.2, fw = it.w / 1000, fh = it.h / 1000;
     const X = Math.max(0, Math.min(it.x / 1000, span - fw)); // stays on the wall if the container shrinks
-    const g = wall(fx, fz, rot), fg = fixtureAt(it.type, g, fw, fh, m);
+    const g = wall(fx, fz, rot), fg = fixtureAt(it.type, g, fw, fh, m, (it.d || FIXTURES.rack.d) / 1000);
     fg.position.set(span / 2 - X - fw / 2, POST + 0.005 + it.y / 1000 + fh / 2, 0);
     for (const mesh of fg.userData.inner) { mesh.userData.fix = { it, g, fg, span, fw, fh }; fixtureMeshes.push(mesh); }
   }
@@ -452,7 +454,7 @@ function cornerCasting(sx, sz, top, { l, w, h }, m) {
 // One wall fixture, built around its own origin in a group inside wall frame g
 // (x along the wall, +z outward, inner face at z -0.09). Inner parts hide with their wall
 // in the interior cut-away; cut-outs and glands also show outside. Returns the group.
-function fixtureAt(type, g, w, h, m) {
+function fixtureAt(type, g, w, h, m, depth) {
   const fg = new THREE.Group(), zi = -0.09, inner = [];
   g.add(fg);
   if (type === 'socket') { // double socket: plate, two round recesses with pin holes and earth clips
@@ -467,21 +469,24 @@ function fixtureAt(type, g, w, h, m) {
       for (const py of [-1, 1]) inner.push(box(0.008, 0.003, 0.003, m.fixSilver, cx, py * 0.019, zi - 0.0145, fg));
     }
   } else if (type === 'rack') { // wall-mount network cabinet: carcass, 19" rails, gear, glass door
-    const d = FIXTURES.rack.depth / 1000, t = 0.015, zf = zi - d, gw = Math.min(0.45, w - 2 * t - 0.04), U = 0.0445;
+    const d = depth, t = 0.015, zf = zi - d, gw = Math.min(0.45, w - 2 * t - 0.04), U = 0.0445;
     inner.push(box(w, h, t, m.fixRack, 0, 0, zi - t / 2, fg));
     for (const s of [-1, 1]) {
       inner.push(box(t, h, d, m.fixRack, s * (w / 2 - t / 2), 0, zi - d / 2, fg), box(w, t, d, m.fixRack, 0, s * (h / 2 - t / 2), zi - d / 2, fg));
       inner.push(box(0.02, h - 2 * t, 0.02, m.fixSilver, s * (gw / 2 + 0.012), 0, zf + 0.06, fg)); // 19" mounting rail
       for (let i = -2; i <= 2; i++) inner.push(box(0.003, h * 0.4, d * 0.06, m.fixDark, s * (w / 2 + 0.0005), 0, zi - d / 2 + i * d * 0.12, fg)); // side vents
     }
-    // Gear from the top down while it fits: patch panels, cable manager, switches, shelf with a router.
+    // Gear from the top down until the cabinet is full: patch panel, cable manager, switch, then 2U servers.
+    const CYCLE = ['patch', 'cable', 'switch', 'server', 'server', 'server'];
     let y = h / 2 - t - 0.03;
-    for (const kind of ['patch', 'cable', 'switch', 'patch', 'switch', 'shelf']) {
-      const uh = kind === 'shelf' ? 2 * U : U, cy = y - uh / 2, zg = zf + 0.07;
+    for (let k = 0; ; k++) {
+      const kind = CYCLE[k % CYCLE.length], uh = kind === 'server' ? 2 * U : U, cy = y - uh / 2, zg = zf + 0.07;
       if (y - uh < -h / 2 + t + 0.02) break;
-      if (kind === 'shelf') {
-        inner.push(box(gw, 0.004, 0.3, m.fixSilver, 0, y - uh, zg + 0.15, fg), box(0.22, 0.04, 0.16, m.fixDev, -gw / 4, y - uh + 0.022, zg + 0.1, fg));
-        for (let i = 0; i < 3; i++) inner.push(box(0.006, 0.006, 0.002, m.fixLed, -gw / 4 - 0.08 + i * 0.015, y - uh + 0.03, zg + 0.019, fg));
+      if (kind === 'server') {
+        const deep = Math.min(0.6, d - 0.15);
+        inner.push(box(gw, uh - 0.003, deep, m.fixDev, 0, cy, zg + deep / 2, fg));
+        for (let j = -1; j <= 1; j++) inner.push(box(gw * 0.55, 0.004, 0.002, m.fixPort, -gw * 0.15, cy + j * 0.022, zg - 0.001, fg)); // front grille
+        for (let j = 0; j < 2; j++) inner.push(box(0.006, 0.006, 0.002, m.fixLed, gw / 2 - 0.04 + j * 0.015, cy + 0.02, zg - 0.001, fg));
       } else {
         const deep = kind === 'switch' ? 0.25 : 0.1, n = kind === 'cable' ? 6 : 24;
         inner.push(box(gw, uh - 0.003, deep, m.fixDev, 0, cy, zg + deep / 2, fg));
@@ -917,6 +922,8 @@ function fixtureDefaults() {
   $('fxH').value = f.h;
   $('fxY').value = f.y;
   $('fxW').disabled = $('fxH').disabled = !!f.fixed;
+  $('fxD').value = f.d || '';
+  $('fxD').disabled = $('fxD').hidden = $('fxHint').hidden = $('fxType').value !== 'rack'; // depth only for racks
 }
 $('fxType').onchange = fixtureDefaults;
 $('fxWall').onchange = () => focusWall($('fxWall').value);
@@ -925,11 +932,12 @@ $('fxX').value = 500;
 $('fixForm').onsubmit = e => {
   e.preventDefault();
   const type = $('fxType').value, f = FIXTURES[type], side = $('fxWall').value, num = id => Math.round(+$(id).value);
-  const it = { type, wall: side, x: num('fxX'), y: num('fxY'), w: f.fixed ? f.w : num('fxW'), h: f.fixed ? f.h : num('fxH') };
+  const it = { type, wall: side, x: num('fxX'), y: num('fxY'), w: f.fixed ? f.w : num('fxW'), h: f.fixed ? f.h : num('fxH'), ...(type === 'rack' && { d: num('fxD') }) };
   const [L, W] = footprint(), span = Math.round((side === 'front' || side === 'back' ? L : W) * 1000 - 200);
   const roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
-  if (it.x + it.w > span || it.y + it.h > roomH) {
-    $('fixNote').textContent = `Nu încape: peretele are ${span} mm lungime și ${roomH} mm înălțime.`;
+  const deep = Math.round((side === 'front' || side === 'back' ? W : L) * 1000 - 200);
+  if (it.x + it.w > span || it.y + it.h > roomH || (it.d || 0) > deep) {
+    $('fixNote').textContent = `Nu încape: peretele are ${span} mm lungime și ${roomH} mm înălțime, camera are ${deep} mm adâncime.`;
     return;
   }
   state.fixtures.push(it);
@@ -941,7 +949,7 @@ function renderFixtures() {
   $('fixList').replaceChildren(...state.fixtures.map((it, i) => {
     const li = document.createElement('li'), txt = document.createElement('span'), del = document.createElement('button');
     txt.className = 'txt';
-    txt.textContent = `${FIXTURES[it.type].label} · ${WALL_SIDES[it.wall]} · X ${it.x}, Y ${it.y} · ${it.w}×${it.h} mm`;
+    txt.textContent = `${FIXTURES[it.type].label} · ${WALL_SIDES[it.wall]} · X ${it.x}, Y ${it.y} · ${it.d ? `${it.w}×${it.d}×${it.h} mm (L×l×h)` : `${it.w}×${it.h} mm`}`;
     del.textContent = '×';
     del.ariaLabel = `Șterge ${FIXTURES[it.type].label}`;
     del.onclick = () => { state.fixtures.splice(i, 1); build(); renderFixtures(); };
