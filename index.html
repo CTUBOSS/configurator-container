@@ -191,7 +191,7 @@ const wallMM = wall => wall.layers.reduce((sum, l) => sum + l[2], 0);
 const MODULES = [1, 2, 3, 4, 5, 6];
 const COUPLE = { width: 'Pe lățime', length: 'Pe lungime' };
 const state = { frame: 'RAL 9005 negru', modules: 1, couple: 'width', env: 'nature',
-  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'side', lamp: false, wall: 'sandwich', specs: [], equipment: [], winType: 'std', windows: 3 };
+  length: 6000, width: 2438, height: 2591, color: 'RAL 7035 gri deschis', door: 'metal', doorPos: 'end', lamp: false, wall: 'sandwich', specs: [], equipment: [], winType: 'std', windows: 3 };
 const dims = () => ({ l: state.length / 1000, w: state.width / 1000, h: state.height / 1000 });
 
 // Center [x, z] of module i in the coupled assembly (identical modules, centered on the origin).
