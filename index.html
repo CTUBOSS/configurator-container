@@ -130,6 +130,8 @@
   .eq-edit { display: grid; gap: 8px; }
   .eq-card input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid #cfd6dc; border-radius: 6px; font: inherit; font-size: 16px; }
   .eq-card .hint, .eq-card .note { margin: 0; }
+  .eq-card input[type=number] { padding: 6px 4px; -moz-appearance: textfield; }
+  .eq-card input::-webkit-inner-spin-button { -webkit-appearance: none; }
   .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   button.primary { border-color: #1f6feb; background: #1f6feb; color: #fff; font-weight: 600; }
   button.primary.wide { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; }
@@ -148,7 +150,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div id="eqCard" class="eq-card" hidden><div class="section-head"><strong data-t="Configurare echipamente">Configurare echipamente</strong><button id="eqCardClose" type="button" data-ta="Închide" aria-label="Închide">×</button></div><button id="eqAdd" class="primary" type="button">+ <span data-t="Adaugă echipament">Adaugă echipament</span></button><p class="hint" id="eqEmpty" data-t="Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.">Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.</p><div id="eqEdit" class="eq-edit" hidden><label class="fld"><span data-t="Denumire">Denumire</span><input id="edName" maxlength="30"></label><div class="grid4"><label class="fld">L (mm)<input id="edL" type="number" min="100" step="10"></label><label class="fld">l (mm)<input id="edW" type="number" min="100" step="10"></label><label class="fld">H (mm)<input id="edH" type="number" min="100" step="10"></label><label class="fld">kg<input id="edKg" type="number" min="1" step="1"></label></div><button id="edDel" class="danger" type="button" data-t="Șterge blocul">Șterge blocul</button></div><p class="note" id="eqTotal"></p></div><div class="envbar"><div id="envs" role="group" data-ta="Mediu" aria-label="Mediu"></div><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudConfig" title="Configurează" aria-label="Configurează"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurează">Configurează</span></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div id="eqCard" class="eq-card" hidden><div class="section-head"><strong data-t="Configurare echipamente">Configurare echipamente</strong><button id="eqCardClose" type="button" data-ta="Închide" aria-label="Închide">×</button></div><button id="eqAdd" class="primary" type="button">+ <span data-t="Adaugă echipament">Adaugă echipament</span></button><p class="hint" id="eqEmpty" data-t="Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.">Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.</p><div id="eqEdit" class="eq-edit" hidden><p class="hint" data-t="Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.">Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.</p><label class="fld"><span data-t="Denumire">Denumire</span><input id="edName" maxlength="30"></label><div class="grid4"><label class="fld">L (mm)<input id="edL" type="number" min="100" step="10"></label><label class="fld">l (mm)<input id="edW" type="number" min="100" step="10"></label><label class="fld">H (mm)<input id="edH" type="number" min="100" step="10"></label><label class="fld">kg<input id="edKg" type="number" min="1" step="1"></label></div><button id="edDel" class="danger" type="button" data-t="Șterge blocul">Șterge blocul</button></div><p class="note" id="eqTotal"></p></div><div class="envbar"><div id="envs" role="group" data-ta="Mediu" aria-label="Mediu"></div><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudConfig" title="Configurează" aria-label="Configurează"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurează">Configurează</span></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
   <header class="head">
     <div class="head-row"><h1 data-t="Configurator container DUALMAN">Configurator container DUALMAN</h1>
@@ -1105,6 +1107,7 @@ const $ = id => document.getElementById(id);
 const eur = n => Math.round(n).toLocaleString(loc()) + ' €';
 // i18n: the Romanian strings are the keys; EN maps them (with {0}-style placeholders) to English.
 const EN = {
+"Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.": "Drag the blue dots on the faces to resize the block.",
 "Configurează": "Configure",
 "Configurare": "Configure",
 "Configurare echipamente": "Configure equipment",
@@ -1604,10 +1607,54 @@ function showTip(e, text) {
 }
 // Selection (interior view): click an equipment box or a wall fixture to select it;
 // Delete / Backspace, or the pill's button on touch screens, removes it.
+// Resize handles: a dot on each side face and on the top of the selected block; dragging one moves that face
+// (the opposite face stays put), kept inside the room.
+const HANDLE_DIRS = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]].map(d => new THREE.Vector3(...d));
+// transparent so it sorts with the semi-opaque blocks; renderOrder then draws it last, on top
+const handleMat = new THREE.MeshBasicMaterial({ color: 0x1f6feb, depthTest: false, transparent: true });
+const handles = HANDLE_DIRS.map(dir => {
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), handleMat);
+  dot.renderOrder = 10;
+  dot.visible = false;
+  dot.userData.dir = dir;
+  scene.add(dot);
+  return dot;
+});
+function placeHandles() {
+  const mesh = selected?.list === 'equipment' ? selected.obj : null;
+  for (const dot of handles) {
+    dot.visible = !!mesh;
+    if (!mesh) continue;
+    const { l, w, h } = mesh.userData.item, d = dot.userData.dir;
+    group.localToWorld(dot.position.set(d.x * l / 2000, d.y * h / 2000, d.z * w / 2000).add(mesh.position));
+  }
+}
+function startResize(dot) {
+  const mesh = selected.obj, it = mesh.userData.item, d = dot.userData.dir;
+  // Drag plane through the handle, containing the resize axis and facing the camera as much as possible.
+  const toCam = new THREE.Vector3().subVectors(camera.position, dot.position);
+  dragPlane.setFromNormalAndCoplanarPoint(toCam.addScaledVector(d, -toCam.dot(d)).normalize(), dot.position);
+  ray.ray.intersectPlane(dragPlane, hit);
+  const key = d.x ? 'l' : d.z ? 'w' : 'h', axis = d.x ? 'x' : 'z', s = d.x + d.y + d.z;
+  drag = { resize: { mesh, it, d, key, axis, s, start: hit.clone(), size: it[key] / 1000, fixed: d.y ? 0 : it[axis] - s * it[key] / 2000 } };
+}
+function resizeMesh(mesh) {
+  const it = mesh.userData.item;
+  mesh.geometry.dispose();
+  mesh.geometry = new THREE.BoxGeometry(it.l / 1000, it.h / 1000, it.w / 1000);
+  mesh.children[0].geometry.dispose();
+  mesh.children[0].geometry = new THREE.EdgesGeometry(mesh.geometry);
+  mesh.position.set(it.x, POST + 0.005 + it.h / 2000, it.z);
+  selBox.update();
+  placeHandles();
+  renderEqEditor();
+}
+
 let selected = null, selBox = null;
 function select(target) { // target: { list: 'equipment' | 'fixtures', it, obj } or null
   if (selBox) { scene.remove(selBox); selBox.geometry.dispose(); selBox.material.dispose(); selBox = null; }
   selected = target;
+  placeHandles();
   $('selInfo').hidden = !target || !$('eqCard').hidden; // in configure mode the editor card shows the selection
   renderEqEditor();
   if (!target) return;
@@ -1633,6 +1680,8 @@ $('selDel').onclick = deleteSelected;
 renderer.domElement.addEventListener('pointerdown', e => {
   if (!interiorView) return;
   pointerRay(e);
+  const dot = handles[0].visible && ray.intersectObjects(handles, false)[0]?.object;
+  if (dot) { startResize(dot); controls.enabled = false; return; }
   // Raycasts ignore visibility, so skip fixtures hidden on cut-away walls.
   const mesh = ray.intersectObjects([...equipMeshes, ...fixtureMeshes], false).find(h => h.object.visible)?.object;
   select(!mesh ? null : mesh.userData.item ? { list: 'equipment', it: mesh.userData.item, obj: mesh }
@@ -1675,7 +1724,11 @@ function wallUnderPointer() {
 }
 
 renderer.domElement.addEventListener('pointermove', e => {
-  if (!drag) return;
+  if (!drag) { // hover feedback over the resize handles
+    if (handles[0].visible) pointerRay(e);
+    renderer.domElement.style.cursor = handles[0].visible && ray.intersectObjects(handles, false).length ? 'grab' : '';
+    return;
+  }
   pointerRay(e);
   if (drag.fix) { // dragging across onto another full-height wall moves the fixture there
     const to = wallUnderPointer(), it = drag.fix.it;
@@ -1691,6 +1744,17 @@ renderer.domElement.addEventListener('pointermove', e => {
     }
   }
   if (!ray.ray.intersectPlane(dragPlane, hit)) return;
+  if (drag.resize) {
+    const r = drag.resize, it = r.it, [L, W] = footprint();
+    const t = hit.clone().sub(r.start).dot(r.d);
+    // the moving face may reach the room edge: half the room minus the fixed face's offset on that side
+    const max = r.d.y ? dims().h - 2 * POST - 0.05 : ((r.axis === 'x' ? L : W) - 0.2) / 2 - r.s * r.fixed;
+    it[r.key] = Math.round(Math.max(0.1, Math.min(max, r.size + t)) * 100) * 10; // mm, in 10 mm steps
+    if (!r.d.y) it[r.axis] = r.fixed + r.s * it[r.key] / 2000;
+    resizeMesh(r.mesh);
+    showTip(e, `${{ l: 'L', w: 'l', h: 'H' }[r.key]} ${it[r.key]} mm`);
+    return;
+  }
   if (drag.mesh) {
     const it = drag.mesh.userData.item;
     it.x = hit.x + drag.dx;
@@ -1710,6 +1774,7 @@ renderer.domElement.addEventListener('pointermove', e => {
 });
 renderer.domElement.addEventListener('pointerup', () => {
   if (drag?.fix) { renderFixtures(); $('dragTip').hidden = true; }
+  if (drag?.resize) { renderEquip(); $('dragTip').hidden = true; }
   drag = null;
   controls.enabled = true;
 });
