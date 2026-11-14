@@ -55,7 +55,7 @@
   .equip-list button { min-height: 0; padding: 2px 10px; }
   .section-card { position: absolute; top: 12px; right: max(12px, env(safe-area-inset-right, 0px)); z-index: 2; width: min(340px, calc(100% - 24px));
     max-height: calc(100% - 96px); overflow: auto; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.96);
-    box-shadow: 0 4px 18px rgba(0,0,0,.15); font-size: 13px; }
+    box-shadow: 0 4px 18px rgba(0,0,0,.15); font-size: 13px; max-height: calc(100% - 88px); overflow-y: auto; }
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .section-head button { min-height: 0; padding: 2px 10px; }
   #secSvg { display: block; width: 100%; height: auto; margin: 8px 0; }
@@ -122,6 +122,18 @@
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
   .envbar button.on { border-color: rgba(31,111,235,.8); background: rgba(31,111,235,.75); color: #fff; }
   .section-card { top: 64px; max-height: calc(100% - 148px); }
+  /* Configure mode: floating equipment editor over the 3D view. */
+  .eq-card { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 76px; z-index: 2; display: grid; gap: 8px;
+    width: min(290px, calc(100% - 24px)); padding: 12px; border-radius: 12px; background: rgba(255,255,255,.96);
+    box-shadow: 0 4px 18px rgba(0,0,0,.15); font-size: 13px; max-height: calc(100% - 88px); overflow-y: auto; }
+  .eq-card[hidden], .eq-edit[hidden] { display: none; }
+  .eq-edit { display: grid; gap: 8px; }
+  .eq-card input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid #cfd6dc; border-radius: 6px; font: inherit; font-size: 16px; }
+  .eq-card .hint, .eq-card .note { margin: 0; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  button.primary { border-color: #1f6feb; background: #1f6feb; color: #fff; font-weight: 600; }
+  button.primary.wide { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; }
+  button.danger { border-color: #e5a29b; color: #b3261e; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -131,7 +143,7 @@
 </script>
 </head>
 <body>
-<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div class="envbar" id="envs" role="group" data-ta="Mediu" aria-label="Mediu"></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div id="eqCard" class="eq-card" hidden><div class="section-head"><strong data-t="Configurare echipamente">Configurare echipamente</strong><button id="eqCardClose" type="button" data-ta="Închide" aria-label="Închide">×</button></div><button id="eqAdd" class="primary" type="button">+ <span data-t="Adaugă bloc">Adaugă bloc</span></button><p class="hint" id="eqEmpty" data-t="Selectează un bloc ca să-i schimbi dimensiunile și greutatea. Blocurile se trag cu mouse-ul pe podea.">Selectează un bloc ca să-i schimbi dimensiunile și greutatea. Blocurile se trag cu mouse-ul pe podea.</p><div id="eqEdit" class="eq-edit" hidden><label class="fld"><span data-t="Denumire">Denumire</span><input id="edName" maxlength="30"></label><div class="grid4"><label class="fld">L (mm)<input id="edL" type="number" min="100" step="10"></label><label class="fld">l (mm)<input id="edW" type="number" min="100" step="10"></label><label class="fld">H (mm)<input id="edH" type="number" min="100" step="10"></label><label class="fld">kg<input id="edKg" type="number" min="1" step="1"></label></div><button id="edDel" class="danger" type="button" data-t="Șterge blocul">Șterge blocul</button></div><p class="note" id="eqTotal"></p></div><div class="envbar" id="envs" role="group" data-ta="Mediu" aria-label="Mediu"></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button><button id="hudConfig" title="Configurare" aria-label="Configurare"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button><button id="hudInterior" title="Vedere interior" aria-label="Vedere interior"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></button><button id="hudSection" title="Secțiune perete" aria-label="Secțiune perete"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
   <header class="head">
     <div class="head-row"><h1 data-t="Configurator container DUALMAN">Configurator container DUALMAN</h1>
@@ -180,14 +192,8 @@
     <div class="seg" role="group"><button id="viewExt" class="on" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><span data-t="Vedere exterioară">Vedere exterioară</span></button><button id="viewInt" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9 4 9-4"/><path d="M3 9v7l9 5 9-5V9"/><path d="M12 13v8"/><path d="M3 9l4-3M21 9l-4-3"/></svg><span data-t="Vedere interioară">Vedere interioară</span></button></div>
     <p class="hint" data-t="Echipamentele și elementele de pe pereți se văd și se mută în vederea interioară.">Echipamentele și elementele de pe pereți se văd și se mută în vederea interioară.</p>
     <h3 data-t="Echipamente">Echipamente</h3>
-    <form id="equipForm" class="equip">
-      <input id="eqName" maxlength="30" data-tp="Denumire (opțional)" placeholder="Denumire (opțional)" data-ta="Denumire echipament" aria-label="Denumire echipament">
-      <input id="eqL" type="number" min="100" max="12000" step="10" required placeholder="L mm" data-ta="Lungime (mm)" aria-label="Lungime (mm)">
-      <input id="eqW" type="number" min="100" max="3000" step="10" required placeholder="l mm" data-ta="Lățime (mm)" aria-label="Lățime (mm)">
-      <input id="eqH" type="number" min="100" max="2800" step="10" required placeholder="H mm" data-ta="Înălțime (mm)" aria-label="Înălțime (mm)">
-      <input id="eqKg" type="number" min="1" max="30000" step="1" required placeholder="kg" data-ta="Greutate (kg)" aria-label="Greutate (kg)">
-      <button type="submit" data-t="Adaugă echipament">Adaugă echipament</button>
-    </form>
+    <button id="configBtn" class="primary wide" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurare">Configurare</span></button>
+    <p class="hint" data-t="Deschide vederea de sus, fără acoperiș, în care adaugi blocuri pentru echipamente, le muți pe podea și le setezi dimensiunile și greutatea.">Deschide vederea de sus, fără acoperiș, în care adaugi blocuri pentru echipamente, le muți pe podea și le setezi dimensiunile și greutatea.</p>
     <ul id="equipList" class="equip-list"></ul>
     <p class="note" id="equipNote"></p>
     <h3 data-t="Elemente pe pereți">Elemente pe pereți</h3>
@@ -414,7 +420,8 @@ function build() {
     lumCap: new THREE.MeshStandardMaterial({ color: 0x8f959b, roughness: 0.5, ...INSIDE }),
     lumDiffuser: new THREE.MeshStandardMaterial({ color: 0xf7f8f8, emissive: 0xffffff, emissiveIntensity: lightsOn ? 1.4 : 0.08, roughness: 0.3, ...INSIDE }),
     innerGlass: new THREE.MeshStandardMaterial({ color: 0xbcd3e3, emissive: 0x9fb8c9, emissiveIntensity: 0.2, roughness: 0.1, transparent: true, opacity: 0.3, ...INSIDE }),
-    equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...INSIDE })),
+    // Semi-opaque blocks: what stands behind them stays visible.
+    equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false, ...INSIDE })),
     equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
     cutWall: new THREE.MeshStandardMaterial({ color: 0xeeece7, roughness: 0.9 }),
     cut: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.8 }),
@@ -1093,6 +1100,14 @@ const $ = id => document.getElementById(id);
 const eur = n => Math.round(n).toLocaleString(loc()) + ' €';
 // i18n: the Romanian strings are the keys; EN maps them (with {0}-style placeholders) to English.
 const EN = {
+"Configurare": "Configure",
+"Configurare echipamente": "Configure equipment",
+"Adaugă bloc": "Add block",
+"Denumire": "Name",
+"Șterge blocul": "Delete block",
+"Închide": "Close",
+"Deschide vederea de sus, fără acoperiș, în care adaugi blocuri pentru echipamente, le muți pe podea și le setezi dimensiunile și greutatea.": "Opens the top view without the roof, where you add blocks for equipment, move them on the floor and set their size and weight.",
+"Selectează un bloc ca să-i schimbi dimensiunile și greutatea. Blocurile se trag cu mouse-ul pe podea.": "Select a block to change its size and weight. Drag blocks across the floor with the mouse.",
 "Containerele modulare sunt module identice, fabricate separat și îmbinate pe șantier într-o singură clădire. Așa obții o suprafață mai mare (birou, vestiar, sală de ședințe), iar fiecare modul se transportă ca un container obișnuit.": "Modular containers are identical modules, built separately and joined on site into one building. You get a larger space (office, changing room, meeting room), and each module still ships like a standard container.",
 "Pe lățime, modulele se alătură pe laturile lungi și formează o încăpere mai lată. Pe lungime, se pun cap la cap pentru o încăpere mai lungă. Pereții dintre module se scot, ușa și ferestrele se pun pe fațadele exterioare, iar prețul containerului crește cu fiecare modul.": "Side by side, modules join along their long walls into a wider room. End to end, they form a longer one. The walls between modules come out, the door and windows go on the outer façades, and the container price grows with each module.",
 "Număr module": "Number of modules",
@@ -1404,6 +1419,7 @@ function focusWall(side) {
 controls.addEventListener('start', () => { camGoal = null; }); // the user takes over the camera
 function toggleInterior(on = !interiorView) {
   select(null);
+  if (!on) { $('eqCard').hidden = true; $('hudConfig').classList.remove('on'); }
   interiorView = on;
   $('hudInterior').className = $('viewInt').className = on ? 'on' : '';
   $('viewExt').className = on ? '' : 'on';
@@ -1423,20 +1439,6 @@ function clampItem(it) {
   it.x = hx < 0 ? 0 : Math.max(-hx, Math.min(hx, it.x));
   it.z = hz < 0 ? 0 : Math.max(-hz, Math.min(hz, it.z));
 }
-$('equipForm').onsubmit = e => {
-  e.preventDefault();
-  const [L, W] = footprint(), num = id => Math.round(+$(id).value), roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
-  const it = { name: $('eqName').value.trim() || tr('Echipament {0}', state.equipment.length + 1), l: num('eqL'), w: num('eqW'), h: num('eqH'), kg: num('eqKg'), x: 0, z: 0 };
-  if (it.l > (L - 0.2) * 1000 || it.w > (W - 0.2) * 1000 || it.h > roomH) {
-    $('equipNote').textContent = tr('Nu încape: interiorul are {0} × {1} × {2} mm.', Math.round((L - 0.2) * 1000), Math.round((W - 0.2) * 1000), roomH);
-    return;
-  }
-  state.equipment.push(it);
-  e.target.reset();
-  build();
-  renderEquip();
-  toggleInterior(true);
-};
 function renderEquip() {
   $('equipList').replaceChildren(...state.equipment.map((it, i) => {
     const li = document.createElement('li'), sw = document.createElement('span'), txt = document.createElement('span'), del = document.createElement('button');
@@ -1524,6 +1526,62 @@ function renderFixtures() {
   render(); // fixture count changes the price
 }
 
+// Configure mode: the interior cut-away from an isometric angle, with a floating editor for equipment blocks.
+function openConfigure(on = $('eqCard').hidden) {
+  if (!on) return toggleInterior(false); // also closes the card
+  toggleInterior(true);
+  $('eqCard').hidden = false;
+  $('hudConfig').classList.add('on');
+  const [L, W] = footprint(), d = Math.max(L, W, 5) * 1.15, lift = SUPPORT_LIFT[state.support];
+  camGoal = { target: new THREE.Vector3(0, lift + 0.8, 0), pos: new THREE.Vector3(d * 0.75, lift + d * 0.85, d * 0.75) };
+  renderEqEditor();
+}
+$('configBtn').onclick = () => openConfigure(true);
+$('hudConfig').onclick = () => openConfigure();
+$('eqCardClose').onclick = () => openConfigure(false);
+function reselect(it) {
+  const mesh = equipMeshes.find(o => o.userData.item === it);
+  if (mesh) select({ list: 'equipment', it, obj: mesh });
+}
+function renderEqEditor() {
+  const it = selected && selected.list === 'equipment' ? selected.it : null;
+  $('eqEdit').hidden = !it;
+  $('eqEmpty').hidden = !!it;
+  if (it) [$('edName').value, $('edL').value, $('edW').value, $('edH').value, $('edKg').value] = [it.name, it.l, it.w, it.h, it.kg];
+  const kg = state.equipment.reduce((sum, o) => sum + o.kg, 0);
+  $('eqTotal').textContent = state.equipment.length ? tr('Total echipamente: {0} kg', kg) : '';
+}
+// New block 1000 × 800 × 1000 mm, 100 kg: centered, or beside the others along the room if the middle is taken.
+$('eqAdd').onclick = () => {
+  const [L] = footprint(), it = { name: tr('Echipament {0}', state.equipment.length + 1), l: 1000, w: 800, h: 1000, kg: 100, x: 0, z: 0 };
+  const step = (it.l + 200) / 1000, half = (L - 0.2 - it.l / 1000) / 2;
+  const free = x => state.equipment.every(o => Math.abs(o.x - x) >= (o.l + it.l) / 2000 + 0.1 || Math.abs(o.z) >= (o.w + it.w) / 2000 + 0.1);
+  for (let k = 0; k < 40; k++) {
+    const x = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * step;
+    if (Math.abs(x) <= half && free(x)) { it.x = x; break; }
+  }
+  state.equipment.push(it);
+  build();
+  renderEquip();
+  reselect(it);
+};
+// Editing the selected block: sizes are kept within the room, then the scene rebuilds around it.
+for (const id of ['edName', 'edL', 'edW', 'edH', 'edKg']) $(id).onchange = () => {
+  const it = selected && selected.list === 'equipment' ? selected.it : null;
+  if (!it) return;
+  const [L, W] = footprint(), roomH = Math.round((dims().h - 2 * POST - 0.05) * 1000);
+  const num = (field, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+$(field).value) || lo));
+  it.name = $('edName').value.trim() || it.name;
+  it.l = num('edL', 100, Math.round((L - 0.2) * 1000));
+  it.w = num('edW', 100, Math.round((W - 0.2) * 1000));
+  it.h = num('edH', 100, roomH);
+  it.kg = num('edKg', 1, 30000);
+  build();
+  renderEquip();
+  reselect(it);
+};
+$('edDel').onclick = () => deleteSelected();
+
 // Drag in interior view: equipment slides on the floor, wall fixtures slide on their wall
 // (with a live X / Y tooltip). The camera holds still while dragging.
 const dragPlane = new THREE.Plane(), hit = new THREE.Vector3(), local = new THREE.Vector3();
@@ -1545,7 +1603,8 @@ let selected = null, selBox = null;
 function select(target) { // target: { list: 'equipment' | 'fixtures', it, obj } or null
   if (selBox) { scene.remove(selBox); selBox.geometry.dispose(); selBox.material.dispose(); selBox = null; }
   selected = target;
-  $('selInfo').hidden = !target;
+  $('selInfo').hidden = !target || !$('eqCard').hidden; // in configure mode the editor card shows the selection
+  renderEqEditor();
   if (!target) return;
   selBox = new THREE.BoxHelper(target.obj, 0x1f6feb);
   scene.add(selBox);
@@ -1705,6 +1764,7 @@ function hudTitles() {
   set('hudNight', night ? 'Mod zi' : 'Mod noapte');
   set('hudInterior', 'Vedere interior');
   set('hudSection', 'Secțiune perete');
+  set('hudConfig', 'Configurare');
 }
 function applyLang(code) {
   lang = code;
@@ -1720,6 +1780,7 @@ function applyLang(code) {
   render();
   renderEquip();
   renderFixtures();
+  renderEqEditor();
   try { localStorage.setItem('lang', code); } catch { /* storage blocked: the choice just isn't remembered */ }
 }
 $('langRo').onclick = () => applyLang('ro');
