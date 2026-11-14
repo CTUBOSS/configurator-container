@@ -143,6 +143,12 @@
   .envbar #hudNight { display: grid; place-items: center; padding: 0; margin-left: 6px; }
   /* The configure button is the main call to action on the view: wider, with a text label. */
   .hud #hudConfig { width: auto; grid-auto-flow: column; gap: 8px; padding: 0 16px; font-weight: 600; font-size: 15px; }
+  /* Interior layout card: two tabs, floor equipment and wall installations. */
+  .eq-card { width: min(320px, calc(100% - 24px)); }
+  .eq-card .seg { margin: 0; }
+  .eq-pane { display: grid; gap: 8px; }
+  .eq-pane[hidden] { display: none; }
+  .eq-pane .equip-list { margin: 0; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -152,7 +158,20 @@
 </script>
 </head>
 <body>
-<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div id="eqCard" class="eq-card" hidden><div class="section-head"><strong data-t="Configurare echipamente">Configurare echipamente</strong><button id="eqCardClose" type="button" data-ta="Închide" aria-label="Închide">×</button></div><button id="eqAdd" class="primary" type="button">+ <span data-t="Adaugă echipament">Adaugă echipament</span></button><p class="hint" id="eqEmpty" data-t="Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.">Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.</p><div id="eqEdit" class="eq-edit" hidden><p class="hint" data-t="Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.">Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.</p><label class="fld"><span data-t="Denumire">Denumire</span><input id="edName" maxlength="30"></label><div class="grid4"><label class="fld">L (mm)<input id="edL" type="number" min="100" step="10"></label><label class="fld">l (mm)<input id="edW" type="number" min="100" step="10"></label><label class="fld">H (mm)<input id="edH" type="number" min="100" step="10"></label><label class="fld">kg<input id="edKg" type="number" min="1" step="1"></label></div><button id="edDel" class="danger" type="button" data-t="Șterge blocul">Șterge blocul</button></div><p class="note" id="eqTotal"></p><p class="note" id="eqClash" role="status"></p></div><div class="envbar"><div id="envs" role="group" data-ta="Mediu" aria-label="Mediu"></div><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudConfig" title="Configurează" aria-label="Configurează"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurează">Configurează</span></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
+<div id="view"><div id="dragTip" class="drag-tip" hidden></div><div id="selInfo" class="sel-info" hidden><span id="selText"></span><button id="selDel" data-t="Șterge">Șterge</button></div><div id="eqCard" class="eq-card" hidden><div class="section-head"><strong data-t="Amenajare interior">Amenajare interior</strong><button id="eqCardClose" type="button" data-ta="Închide" aria-label="Închide">×</button></div><div class="seg" role="tablist"><button id="tabEq" class="on" type="button" role="tab" aria-selected="true"><span data-t="Echipamente">Echipamente</span></button><button id="tabFx" type="button" role="tab" aria-selected="false"><span data-t="Instalații pe pereți">Instalații pe pereți</span></button></div><div id="paneEq" class="eq-pane"><button id="eqAdd" class="primary" type="button">+ <span data-t="Adaugă echipament">Adaugă echipament</span></button><p class="hint" id="eqEmpty" data-t="Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.">Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.</p><div id="eqEdit" class="eq-edit" hidden><p class="hint" data-t="Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.">Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.</p><label class="fld"><span data-t="Denumire">Denumire</span><input id="edName" maxlength="30"></label><div class="grid4"><label class="fld">L (mm)<input id="edL" type="number" min="100" step="10"></label><label class="fld">l (mm)<input id="edW" type="number" min="100" step="10"></label><label class="fld">H (mm)<input id="edH" type="number" min="100" step="10"></label><label class="fld">kg<input id="edKg" type="number" min="1" step="1"></label></div><button id="edDel" class="danger" type="button" data-t="Șterge blocul">Șterge blocul</button></div><p class="note" id="eqTotal"></p><p class="note" id="eqClash" role="status"></p><ul id="equipList" class="equip-list"></ul>
+    <p class="note" id="equipNote"></p></div><div id="paneFx" class="eq-pane" hidden><form id="fixForm" class="equip">
+      <select id="fxType" data-ta="Tip element" aria-label="Tip element"></select>
+      <select id="fxWall" data-ta="Perete" aria-label="Perete"></select>
+      <label class="fld"><span data-t="L · lățime (mm)">L · lățime (mm)</span><input id="fxW" type="number" min="20" max="3000" step="10" required></label>
+      <label class="fld" id="fxDL" hidden><span data-t="l · adâncime (mm)">l · adâncime (mm)</span><input id="fxD" type="number" min="200" max="3000" step="10" required></label>
+      <label class="fld"><span data-t="h · înălțime (mm)">h · înălțime (mm)</span><input id="fxH" type="number" min="20" max="2800" step="10" required></label>
+      <select id="fxN" data-ta="Număr presetupe" aria-label="Număr presetupe" hidden disabled></select>
+      <button type="submit" data-t="Adaugă pe perete">Adaugă pe perete</button>
+    </form>
+    <p class="hint" id="fxHint" hidden></p>
+    <p class="hint" data-t="Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți), chiar și pe alt perete. Dimensiuni în mm.">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți), chiar și pe alt perete. Dimensiuni în mm.</p>
+    <ul id="fixList" class="equip-list"></ul>
+    <p class="note" id="fixNote"></p></div></div><div class="envbar"><div id="envs" role="group" data-ta="Mediu" aria-label="Mediu"></div><button id="hudNight" title="Mod noapte" aria-label="Mod noapte"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></div><div class="hud"><button id="hudDoor" class="on" title="Închide ușa" aria-label="Închide ușa"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><circle cx="15" cy="12" r="1"/></svg></button><button id="hudLight" class="on" title="Stinge lumina" aria-label="Stinge lumina"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg></button><button id="hudConfig" title="Configurează" aria-label="Configurează"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurează">Configurează</span></button></div><div id="section" class="section-card" hidden><div class="section-head"><strong id="secTitle"></strong><button id="secClose" data-ta="Închide secțiunea" aria-label="Închide secțiunea">×</button></div><svg id="secSvg" role="img" data-ta="Secțiune prin perete" aria-label="Secțiune prin perete"></svg><ol id="secLegend"></ol><p id="secSpec"></p></div></div>
 <aside>
   <header class="head">
     <div class="head-row"><h1 data-t="Configurator container DUALMAN">Configurator container DUALMAN</h1>
@@ -200,25 +219,9 @@
   <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><h2 data-t="Interior">Interior</h2></summary>
     <div class="seg" role="group"><button id="viewExt" class="on" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><span data-t="Vedere exterioară">Vedere exterioară</span></button><button id="viewInt" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9 4 9-4"/><path d="M3 9v7l9 5 9-5V9"/><path d="M12 13v8"/><path d="M3 9l4-3M21 9l-4-3"/></svg><span data-t="Vedere interioară">Vedere interioară</span></button></div>
     <p class="hint" data-t="Echipamentele și elementele de pe pereți se văd și se mută în vederea interioară.">Echipamentele și elementele de pe pereți se văd și se mută în vederea interioară.</p>
-    <h3 data-t="Echipamente">Echipamente</h3>
-    <button id="configBtn" class="primary wide" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurare">Configurare</span></button>
-    <p class="hint" data-t="Deschide vederea de sus, fără acoperiș, în care adaugi blocuri pentru echipamente, le muți pe podea și le setezi dimensiunile și greutatea.">Deschide vederea de sus, fără acoperiș, în care adaugi blocuri pentru echipamente, le muți pe podea și le setezi dimensiunile și greutatea.</p>
-    <ul id="equipList" class="equip-list"></ul>
-    <p class="note" id="equipNote"></p>
-    <h3 data-t="Elemente pe pereți">Elemente pe pereți</h3>
-    <form id="fixForm" class="equip">
-      <select id="fxType" data-ta="Tip element" aria-label="Tip element"></select>
-      <select id="fxWall" data-ta="Perete" aria-label="Perete"></select>
-      <label class="fld"><span data-t="L · lățime (mm)">L · lățime (mm)</span><input id="fxW" type="number" min="20" max="3000" step="10" required></label>
-      <label class="fld" id="fxDL" hidden><span data-t="l · adâncime (mm)">l · adâncime (mm)</span><input id="fxD" type="number" min="200" max="3000" step="10" required></label>
-      <label class="fld"><span data-t="h · înălțime (mm)">h · înălțime (mm)</span><input id="fxH" type="number" min="20" max="2800" step="10" required></label>
-      <select id="fxN" data-ta="Număr presetupe" aria-label="Număr presetupe" hidden disabled></select>
-      <button type="submit" data-t="Adaugă pe perete">Adaugă pe perete</button>
-    </form>
-    <p class="hint" id="fxHint" hidden></p>
-    <p class="hint" data-t="Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți), chiar și pe alt perete. Dimensiuni în mm.">Alegerea peretelui rotește vederea spre el. Elementul apare în mijlocul peretelui; trage-l apoi în poziția dorită (cotele X / Y se văd în timp ce îl muți), chiar și pe alt perete. Dimensiuni în mm.</p>
-    <ul id="fixList" class="equip-list"></ul>
-    <p class="note" id="fixNote"></p>
+    <h3 data-t="Amenajare interior">Amenajare interior</h3>
+    <button id="configBtn" class="primary wide" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-t="Configurează">Configurează</span></button>
+    <p class="hint" data-t="Deschide vederea de sus, fără acoperiș, în care amplasezi echipamentele pe podea și instalațiile pe pereți: prize, rack, AC, presetupe.">Deschide vederea de sus, fără acoperiș, în care amplasezi echipamentele pe podea și instalațiile pe pereți: prize, rack, AC, presetupe.</p>
   </details>
   <details class="grp"><summary><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/></svg><h2 data-t="Cuplare module">Cuplare module</h2></summary>
     <p class="hint" data-t="Containerele modulare sunt module identice, fabricate separat și îmbinate pe șantier într-o singură clădire. Așa obții o suprafață mai mare (birou, vestiar, sală de ședințe), iar fiecare modul se transportă ca un container obișnuit.">Containerele modulare sunt module identice, fabricate separat și îmbinate pe șantier într-o singură clădire. Așa obții o suprafață mai mare (birou, vestiar, sală de ședințe), iar fiecare modul se transportă ca un container obișnuit.</p>
@@ -1128,6 +1131,7 @@ const $ = id => document.getElementById(id);
 const eur = n => Math.round(n).toLocaleString(loc()) + ' €';
 // i18n: the Romanian strings are the keys; EN maps them (with {0}-style placeholders) to English.
 const EN = {
+"Amenajare interior": "Interior layout", "Instalații pe pereți": "Wall installations",
 "{0} blocuri se suprapun cu alte elemente sau cu pereții (marcate cu roșu).": "{0} blocks overlap other items or the walls (shown in red).",
 "Trage de punctele albastre de pe fețe ca să schimbi dimensiunile blocului.": "Drag the blue dots on the faces to resize the block.",
 "Configurează": "Configure",
@@ -1137,7 +1141,7 @@ const EN = {
 "Denumire": "Name",
 "Șterge blocul": "Delete block",
 "Închide": "Close",
-"Deschide vederea de sus, fără acoperiș, în care adaugi blocuri pentru echipamente, le muți pe podea și le setezi dimensiunile și greutatea.": "Opens the top view without the roof, where you add blocks for equipment, move them on the floor and set their size and weight.",
+"Deschide vederea de sus, fără acoperiș, în care amplasezi echipamentele pe podea și instalațiile pe pereți: prize, rack, AC, presetupe.": "Opens the top view without the roof, where you place equipment on the floor and installations on the walls: sockets, rack, AC, cable glands.",
 "Creează-ți propria configurație: adaugă echipamente și trage-le pe podea.": "Create your own layout: add equipment and drag it across the floor.",
 "Containerele modulare sunt module identice, fabricate separat și îmbinate pe șantier într-o singură clădire. Așa obții o suprafață mai mare (birou, vestiar, sală de ședințe), iar fiecare modul se transportă ca un container obișnuit.": "Modular containers are identical modules, built separately and joined on site into one building. You get a larger space (office, changing room, meeting room), and each module still ships like a standard container.",
 "Pe lățime, modulele se alătură pe laturile lungi și formează o încăpere mai lată. Pe lungime, se pun cap la cap pentru o încăpere mai lungă. Pereții dintre module se scot, ușa și ferestrele se pun pe fațadele exterioare, iar prețul containerului crește cu fiecare modul.": "Side by side, modules join along their long walls into a wider room. End to end, they form a longer one. The walls between modules come out, the door and windows go on the outer façades, and the container price grows with each module.",
@@ -1566,6 +1570,17 @@ function openConfigure(on = $('eqCard').hidden) {
   camGoal = { target: new THREE.Vector3(0, lift + 0.8, 0), pos: new THREE.Vector3(d * 0.75, lift + d * 0.85, d * 0.75) };
   renderEqEditor();
 }
+// Interior layout card tabs: floor equipment or wall installations; selecting an item opens its tab.
+function showTab(fx) {
+  $('paneEq').hidden = fx;
+  $('paneFx').hidden = !fx;
+  $('tabEq').className = fx ? '' : 'on';
+  $('tabFx').className = fx ? 'on' : '';
+  $('tabEq').ariaSelected = !fx;
+  $('tabFx').ariaSelected = fx;
+}
+$('tabEq').onclick = () => showTab(false);
+$('tabFx').onclick = () => showTab(true);
 $('configBtn').onclick = () => openConfigure(true);
 $('hudConfig').onclick = () => openConfigure();
 $('eqCardClose').onclick = () => openConfigure(false);
@@ -1681,6 +1696,7 @@ function select(target) { // target: { list: 'equipment' | 'fixtures', it, obj }
   $('selInfo').hidden = !target || !$('eqCard').hidden; // in configure mode the editor card shows the selection
   renderEqEditor();
   if (!target) return;
+  showTab(target.list === 'fixtures');
   selBox = new THREE.BoxHelper(target.obj, 0x1f6feb);
   scene.add(selBox);
   $('selText').textContent = tr('{0} selectat · tasta Delete sau', target.list === 'equipment' ? target.it.name : tr(FIXTURES[target.it.type].label));
