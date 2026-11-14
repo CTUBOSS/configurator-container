@@ -424,6 +424,8 @@ function build() {
     void: new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 1 }),
     doorTrim: new THREE.MeshStandardMaterial({ color: 0xe6e8ea, roughness: 0.4, ...OUTSIDE }),
     mask: new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp }),
+    // Same mask seen from inside the room (interior view only), for the window openings in the cut walls.
+    maskIn: new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.BackSide, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp }),
     wall: new THREE.MeshStandardMaterial({ color: 0xf2f0eb, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
     floor: new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.8, side: THREE.BackSide, ...INSIDE }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.9, side: THREE.BackSide, ...INSIDE }),
@@ -436,7 +438,7 @@ function build() {
     equip: EQUIP_COLORS.map(color => new THREE.MeshStandardMaterial({ color, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false, ...INSIDE })),
     equipClash: new THREE.MeshStandardMaterial({ color: 0xe5484d, roughness: 0.6, transparent: true, opacity: 0.65, depthWrite: false, ...INSIDE }),
     equipLine: new THREE.LineBasicMaterial({ color: 0x1d2329, ...INSIDE }),
-    cutWall: new THREE.MeshStandardMaterial({ color: 0xeeece7, roughness: 0.9 }),
+    cutWall: new THREE.MeshStandardMaterial({ color: 0xeeece7, roughness: 0.9, ...OUTSIDE }), // window masks open it
     cut: new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.8 }),
     cutDoor: new THREE.MeshStandardMaterial({ color: FRAMES[state.frame], roughness: 0.5 }),
     concrete: new THREE.MeshStandardMaterial({ color: 0xb9b6ae, roughness: 0.95 }),
@@ -726,6 +728,21 @@ function tube(r1, r2, len, seg, mat, x, y, z, parent) {
   return t;
 }
 
+// Panic bar on the inside of a door: latch head on the handle side (x1), end bracket on the hinge side (x0),
+// a steel channel between them and the red push bar in front. z0 is the door face; parts stand out toward -z.
+function panicBar(parent, x0, x1, y, z0, m) {
+  const parts = [], add = (...a) => parts.push(box(...a, parent));
+  const hx = x1 - 0.17, bx = x0 + 0.095, c0 = bx + 0.035, c1 = hx - 0.11, cx = (c0 + c1) / 2, cl = c1 - c0;
+  add(0.22, 0.1, 0.06, m.void, hx, y, z0 - 0.03); // latch head housing
+  add(0.19, 0.075, 0.004, m.steel, hx, y, z0 - 0.062); // its face plate
+  add(0.07, 0.09, 0.06, m.void, bx, y, z0 - 0.03); // hinge-side bracket
+  add(0.05, 0.065, 0.004, m.steel, bx, y, z0 - 0.062);
+  add(cl, 0.055, 0.035, m.steel, cx, y, z0 - 0.0175); // mounting channel
+  add(cl - 0.02, 0.042, 0.022, m.panic, cx, y, z0 - 0.046); // push bar
+  for (const s of [-1, 1]) add(0.012, 0.048, 0.028, m.void, cx + s * (cl / 2 - 0.006), y, z0 - 0.046); // bar end caps
+  return parts;
+}
+
 function doorAt(g, x, m) {
   const y = POST + DOOR.h / 2;
   box(DOOR.w + 0.1, DOOR.h + 0.05, 0.04, m.doorTrim, x, y + 0.025, 0, g);
@@ -738,9 +755,11 @@ function doorAt(g, x, m) {
   cutFaces.push([box(DOOR.w, 0.02, 0.11, m.inner, x, POST + DOOR.h - 0.01, -0.035, g), g]);
   // The door as seen from inside, shown only in the interior view (with the same panic bar).
   const insideFace = box(DOOR.w, DOOR.h, 0.012, m.cutDoor, x, y, -0.096, g);
-  const inside = [insideFace, box(DOOR.w - 0.22, 0.045, 0.04, m.panic, x, POST + 1.0, -0.162, g)];
-  for (const s of [-1, 1]) inside.push(box(0.07, 0.11, 0.07, m.void, x + s * (DOOR.w / 2 - 0.09), POST + 1.0, -0.137, g));
+  const inside = [insideFace, ...panicBar(g, x - DOOR.w / 2, x + DOOR.w / 2, POST + 1.0, -0.102, m)];
   for (const mesh of inside) { mesh.userData.cutaway = true; cutFaces.push([mesh, g]); }
+  // Light switch inside, on the latch side 10 cm past the door trim, at 1.1 m: dark plate, white rocker.
+  const sx = x + DOOR.w / 2 + 0.15, sy = POST + 1.1;
+  cutFaces.push([box(0.086, 0.086, 0.01, m.fixSocket, sx, sy, -0.095, g), g], [box(0.05, 0.05, 0.01, m.fixWhite, sx, sy, -0.104, g), g]);
   // Leaf hinges on its front-left edge and swings outward.
   const leaf = new THREE.Group();
   leaf.position.set(x - DOOR.w / 2, y, 0.025);
@@ -757,8 +776,7 @@ function doorAt(g, x, m) {
   }
   // Inside: panic bar at 1.0 m - a push bar between two end housings across the leaf.
   const py = 1.0 - DOOR.h / 2;
-  for (const px of [0.09, DOOR.w - 0.09]) box(0.07, 0.11, 0.07, m.void, px, py, -0.085, leaf);
-  box(DOOR.w - 0.22, 0.045, 0.04, m.panic, DOOR.w / 2, py, -0.11, leaf);
+  panicBar(leaf, 0, DOOR.w, py, -0.05, m);
   // Fixed metal canopy over the door, sloped slightly outward, with a front lip.
   const cy = POST + DOOR.h + 0.15, tilt = 0.08;
   box(CANOPY.w, 0.04, CANOPY.d, m.frame, x, cy, CANOPY.d / 2, g).rotation.x = tilt;
@@ -783,6 +801,13 @@ function windowAt(g, x, m) {
   mask.position.set(x, y, 0.021);
   mask.renderOrder = -1;
   g.add(mask);
+  // Interior view: the opening seen from inside (on the inner face), so the outside shows through the glass.
+  const maskIn = new THREE.Mesh(mask.geometry, m.maskIn);
+  maskIn.position.set(x, y, -0.089);
+  maskIn.renderOrder = -1;
+  maskIn.userData.cutaway = true;
+  g.add(maskIn);
+  cutFaces.push([maskIn, g]); // hides with its wall when that wall drops to a curb
   box(win.w + 0.1, win.h + 0.1, 0.04, m.winTrim, x, y, 0, g); // stencil keeps only the frame around the opening
   box(win.w, win.h, 0.06, m.glass, x, y, 0, g);
   for (const s of [-1, 1]) { // reveal through the wall thickness
@@ -1459,7 +1484,7 @@ function toggleInterior(on = !interiorView) {
   $('viewInt').className = on ? 'on' : '';
   $('viewExt').className = on ? '' : 'on';
   applyView();
-  if (!on) return frameCamera();
+  if (!on) { camGoal = null; return frameCamera(); } // drop any wall view still easing in
   const [L, W] = footprint(), d = Math.max(L, W, 5) * 1.6;
   camera.position.set(d * 0.2, d * 0.9, d * 0.5);
   controls.target.set(0, 0.5 + SUPPORT_LIFT[state.support], 0);
